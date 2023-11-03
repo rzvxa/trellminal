@@ -3,9 +3,13 @@ use tui::{
     layout::Rect,
 };
 
-pub fn draw(rect: Rect, frame: &mut super::UIFrame) {
+type UIWidget<'a> = super::UIWidget<'a>;
+type DrawCall<'a> = super::DrawCall<'a>;
+type RenderQueue<'a> = super::RenderQueue<'a>;
+
+pub fn draw<'a>(rect: Rect) -> RenderQueue<'a> {
     let block = Block::default()
         .title("Trellminal")
         .borders(Borders::ALL);
-    frame.render_widget(block, rect);
+    vec![DrawCall::new(UIWidget::Block(block), rect)]
 }

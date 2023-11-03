@@ -9,9 +9,6 @@ const DATABASE_PATH: &str = "~/.trellminaldb";
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let mut db = database::load_database(DATABASE_PATH);
-    if !db.initialized {
-        db.initialized = true;
-    }
 
     let event_receiver = input::init();
     let mut terminal = ui::init().unwrap();
@@ -26,7 +23,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             },
             input::Event::Tick => {}
         }
-        if !ui::draw(&mut terminal).unwrap_or(false) {
+        if !ui::draw(&mut terminal, &db).unwrap_or(false) {
             break;
         }
     }

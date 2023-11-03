@@ -4,22 +4,20 @@ use tui::{
     widgets::{Block, Borders, Paragraph},
 };
 
-const TEST_LOGO: &str = "█████████████████████
-███      ███      ███
-███      ███      ███
-███      ███      ███
-███      ███      ███
-███      ███      ███
-███      ████████████
-███      ████████████
-███      ████████████
-█████████████████████
-█████████████████████";
+type UIWidget<'a> = super::UIWidget<'a>;
+type DrawCall<'a> = super::DrawCall<'a>;
+type RenderQueue<'a> = super::RenderQueue<'a>;
 
-pub fn draw(rect: Rect, frame: &mut super::UIFrame) {
+const TEST_LOGO: &str = "███████████
+██   █   ██
+██   █   ██
+██   ██████
+███████████";
+
+pub fn draw<'a>(rect: Rect) -> RenderQueue<'a> {
     let layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(22), Constraint::Percentage(70)].as_ref())
+        .constraints([Constraint::Length(12), Constraint::Percentage(70)].as_ref())
         .split(rect);
     let logo = Paragraph::new(TEST_LOGO)
         .style(Style::default().fg(Color::Blue).bg(Color::White))
@@ -31,6 +29,8 @@ pub fn draw(rect: Rect, frame: &mut super::UIFrame) {
                 .title("Trellminal"),
         );
     let menu = Block::default().borders(Borders::TOP | Borders::BOTTOM | Borders::RIGHT);
-    frame.render_widget(logo, layout[0]);
-    frame.render_widget(menu, layout[1]);
+    vec![
+        DrawCall::new(UIWidget::Paragraph(logo), layout[0]),
+        DrawCall::new(UIWidget::Block(menu), layout[1]),
+    ]
 }

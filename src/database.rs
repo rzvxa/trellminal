@@ -6,13 +6,13 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Database {
-    pub initialized: bool,
+    pub first_load: bool,
     pub users: HashMap<String, String>,
 }
 
 fn create_default_db() -> Database {
     return Database {
-        initialized: false,
+        first_load: true,
         users: HashMap::new(),
     }
 }
