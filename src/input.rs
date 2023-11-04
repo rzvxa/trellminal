@@ -1,6 +1,8 @@
 use std::{thread, sync::mpsc::{self, Receiver}, time::{Duration, Instant}};
 use crossterm::event::{self, Event as CEvent, KeyEventKind};
 
+use tiny_http::{Server, Response, Request};
+
 pub use crossterm::event::KeyCode;
 pub use crossterm::event::KeyEvent;
 
@@ -8,12 +10,14 @@ pub type EventReceiver = Receiver<Event<KeyEvent>>;
 
 pub enum Event<T> {
     Input(T),
+    Request(Request),
     Tick,
 }
 
 pub fn init() -> EventReceiver {
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);
+    let tx_server = tx.clone();
     thread::spawn(move || {
         let mut last_tick = Instant::now();
         loop {
@@ -36,5 +40,13 @@ pub fn init() -> EventReceiver {
             }
         }
     });
+
+    let server = Server::http("0.0.0.0:9999").unwrap();
+    thread::spawn(move || {
+        for req in server.incoming_requests() {
+            tx_server.send(Event::Request(req)).expect("request propagated");
+        }
+    });
+
     return rx;
 }

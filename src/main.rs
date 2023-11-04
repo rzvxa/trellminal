@@ -7,6 +7,7 @@ mod ui;
 
 use state::State;
 
+
 const DATABASE_PATH: &str = "~/.trellminaldb";
 
 #[tokio::main]
@@ -25,11 +26,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 }
                 _ => { ui::update(&mut terminal, input::Event::Input(event)) }
             },
+            input::Event::Request(req) => { ui::update(&mut terminal, input::Event::Request(req)) }
             input::Event::Tick => { ui::update(&mut terminal, input::Event::Tick) }
         }
         if !ui::draw(&mut terminal).unwrap_or(false) {
             break;
         }
+
     }
 
     ui::fini(&mut terminal).unwrap();

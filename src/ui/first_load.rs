@@ -25,13 +25,14 @@ impl Page for FirstLoad {
             .direction(Direction::Vertical)
             .constraints([
                 Constraint::Percentage(33),
-                Constraint::Percentage(33),
+                Constraint::Min(8),
                 Constraint::Percentage(33),
             ])
             .split(rect);
         let center_rect = main_layout[1];
         let center_layout = Layout::default()
             .direction(Direction::Vertical)
+            .margin(1)
             .constraints([Constraint::Min(4), Constraint::Length(1)])
             .split(center_rect);
         let btn_layout = Layout::default()
@@ -113,8 +114,7 @@ impl Page for FirstLoad {
                 },
                 _ => None,
             }
-            Event::Tick => None
-
+            _ => None
         }
     }
 }
