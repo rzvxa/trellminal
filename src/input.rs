@@ -44,7 +44,14 @@ pub fn init() -> EventReceiver {
     let server = Server::http("0.0.0.0:9999").unwrap();
     thread::spawn(move || {
         for req in server.incoming_requests() {
-            tx_server.send(Event::Request(req)).expect("request propagated");
+            match req.url() {
+                "/auth" | "/auth/" => {
+                    let auth_view = std::fs::File::open("res/www/auth.html").unwrap();
+                    let response = Response::from_file(auth_view);
+                    req.respond(response).unwrap();
+                },
+                _ => tx_server.send(Event::Request(req)).expect("request propagated"),
+            }
         }
     });
 

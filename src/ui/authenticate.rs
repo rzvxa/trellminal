@@ -4,7 +4,6 @@ use tui::{
 };
 
 use const_format::formatcp;
-use substring::Substring;
 
 use super::{DrawCall, RenderQueue, UIWidget};
 use crate::input::{Event, KeyCode, KeyEvent};
@@ -46,7 +45,6 @@ const LOGO_LR: &str = " ██████████████████�
  ████████████████████████████ ";
 
 fn logo(rect: &Rect) -> &'static str {
-    // println!("{}, {}", rect.width, rect.height);
     if rect.width >= 31 && rect.height >= 16 {
         LOGO_LR
     } else if rect.width >= 21 && rect.height >= 4 {
@@ -103,10 +101,11 @@ impl Page for Authenticate {
             },
             Event::Request(req) => {
                 let url = req.url();
-                let hash_index = url.find("#token");
+                let token: &str = "token=";
+                let hash_index = url.find("token=");
                 if hash_index.is_some() {
-                    url.substring(0, 1)
-
+                    let token: String = url.chars().skip(hash_index.unwrap_or(0) + token.len()).take(url.len() - token.len()).collect();
+                    println!("{token}");
                 } else {
 
                 }
