@@ -1,7 +1,8 @@
 use std::{thread, sync::mpsc::{self, Receiver}, time::{Duration, Instant}};
-use crossterm::event::{self, Event as CEvent, KeyEvent};
+use crossterm::event::{self, Event as CEvent};
 
 pub use crossterm::event::KeyCode;
+pub use crossterm::event::KeyEvent;
 
 pub type EventReceiver = Receiver<Event<KeyEvent>>;
 

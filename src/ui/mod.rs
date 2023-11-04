@@ -1,26 +1,29 @@
+mod authenticate;
+mod first_load;
+mod header;
+mod router;
+
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use std::{error::Error, io, sync::Arc};
+use std::{error::Error, io};
 use tui::{
     backend::CrosstermBackend,
     widgets::{
-        BarChart, Block, Chart, Clear, Gauge, List, Paragraph, Sparkline, Table, Tabs, Widget,
+        BarChart, Block, Chart, Clear, Gauge, List, Paragraph, Sparkline, Table, Tabs,
     },
     Terminal,
 };
 use crate::state::State;
 use crate::database::Database;
+use crate::input::KeyEvent;
+use router::Router;
 
 pub use tui::layout::Rect;
 
 
-mod authenticate;
-mod first_load;
-mod header;
-mod root;
 
 type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
 
@@ -28,11 +31,16 @@ pub struct UITerminal {
     pub internal: InternalTerminal,
     pub db: Database,
     pub state: State,
+    router: Router,
 }
 
-impl UITerminal {
-    pub fn new(internal: InternalTerminal, db: Database, state: State) -> Self {
-        Self { internal, db, state }
+impl<'a> UITerminal {
+    pub fn new(internal: InternalTerminal, db: Database, state: State, router: Router) -> Self {
+        Self { internal, db, state, router }
+    }
+
+    pub fn router(&self) -> &Router {
+        &self.router
     }
 }
 
@@ -57,7 +65,7 @@ pub struct DrawCall<'a> {
 
 impl<'a> DrawCall<'a> {
     fn new(widget: UIWidget<'a>, rect: Rect) -> Self {
-        Self { widget, rect, z: 0 }
+        Self {widget, rect, z: 0}
     }
 }
 
@@ -69,13 +77,20 @@ pub fn init(db: Database, state: State) -> Result<UITerminal, Box<dyn Error>> {
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
-    Ok(UITerminal::new(terminal, db, state))
+    let router = Router::new()
+        .route("/".to_string(), first_load::FirstLoad::new())
+        .route("/first_load".to_string(), first_load::FirstLoad::new());
+    Ok(UITerminal::new(terminal, db, state, router))
+}
+
+pub fn update(terminal: &mut UITerminal, event: KeyEvent) {
+    terminal.router.current_mut().unwrap().input(event);
 }
 
 pub fn draw(terminal: &mut UITerminal) -> Result<bool, Box<dyn Error>> {
     terminal.internal.draw(|frame| {
         let rect = frame.size();
-        let mut widgets = root::draw(rect, &terminal.db);
+        let mut widgets = terminal.router.current().unwrap().draw(rect);
         widgets.sort_by(|lhs, rhs| {
             lhs.z.cmp(&rhs.z)
         });

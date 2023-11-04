@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 input::KeyCode::Char('q') => {
                     break;
                 }
-                _ => {}
+                _ => { ui::update(&mut terminal, event) }
             },
             input::Event::Tick => {}
         }
