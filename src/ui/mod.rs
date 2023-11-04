@@ -92,8 +92,8 @@ pub fn init(db: Database, state: State) -> Result<UITerminal, Box<dyn Error>> {
     Ok(UITerminal::new(terminal, db, state, router))
 }
 
-pub fn update(terminal: &mut UITerminal, event: Event<KeyEvent>) {
-    match terminal.router.current_mut().unwrap().update(event) {
+pub async fn update(terminal: &mut UITerminal, event: Event<KeyEvent>) {
+    match terminal.router.current_mut().unwrap().update(event, &mut terminal.db).await {
         Some(loc) if *terminal.router.location() != loc => terminal.router.navigate(loc),
         _ => {}
     }

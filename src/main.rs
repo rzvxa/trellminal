@@ -24,10 +24,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 input::KeyCode::Char('c') if event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
                     break;
                 }
-                _ => { ui::update(&mut terminal, input::Event::Input(event)) }
+                _ => { ui::update(&mut terminal, input::Event::Input(event)).await }
             },
-            input::Event::Request(req) => { ui::update(&mut terminal, input::Event::Request(req)) }
-            input::Event::Tick => { ui::update(&mut terminal, input::Event::Tick) }
+            input::Event::Request(req) => { ui::update(&mut terminal, input::Event::Request(req)).await }
+            input::Event::Tick => { ui::update(&mut terminal, input::Event::Tick).await }
         }
         if !ui::draw(&mut terminal).unwrap_or(false) {
             break;

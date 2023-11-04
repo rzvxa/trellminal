@@ -5,14 +5,18 @@ use tui::layout::{
     Rect,
 };
 
+use crate::database::Database;
 use std::collections::HashMap;
 use crate::input::{ Event, KeyEvent };
 
 use super::RenderQueue;
 
+use async_trait::async_trait;
+
+#[async_trait]
 pub trait Page {
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a>;
-    fn update(&mut self, event: Event<KeyEvent>) -> Option<String>;
+    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Option<String>;
 }
 
 pub struct Router {

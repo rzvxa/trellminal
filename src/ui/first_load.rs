@@ -5,6 +5,7 @@ use tui::{
 };
 
 use super::{DrawCall, RenderQueue, State, UIWidget};
+use crate::database::Database;
 use crate::ui::router::Page;
 use crate::input::{KeyCode, KeyEvent, Event};
 
@@ -17,6 +18,8 @@ pub struct FirstLoad {
     selected_button: u8,
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Page for FirstLoad {
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
         let block = Block::default().title("Welcome").borders(Borders::ALL);
@@ -80,7 +83,7 @@ impl Page for FirstLoad {
         ]
     }
 
-    fn update(&mut self, event: Event<KeyEvent>) -> Option<String> {
+    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Option<String> {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => {

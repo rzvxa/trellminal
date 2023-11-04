@@ -6,7 +6,8 @@ use tui::{
 use const_format::formatcp;
 
 use super::{DrawCall, RenderQueue, UIWidget};
-use crate::input::{Event, KeyCode, KeyEvent};
+use crate::database::Database;
+use crate::input::{Event, KeyEvent};
 use crate::ui::router::Page;
 
 pub struct Authenticate {}
@@ -14,7 +15,7 @@ const APP_NAME: &str = "Trellminal";
 // public key
 const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
 
-const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}");
+const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}&return_url=http://127.0.0.1:9999/auth");
 
 const LOGO_XS: &str = "Trellminal";
 
@@ -56,6 +57,8 @@ fn logo(rect: &Rect) -> &'static str {
     }
 }
 
+use async_trait::async_trait;
+#[async_trait]
 impl Page for Authenticate {
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
         let block = Block::default().title("Authenticate").borders(Borders::ALL);
@@ -94,7 +97,7 @@ impl Page for Authenticate {
         ]
     }
 
-    fn update(&mut self, event: Event<KeyEvent>) -> Option<String> {
+    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Option<String> {
         match event {
             Event::Input(event) => match event.code {
                 _ => None,
@@ -105,6 +108,12 @@ impl Page for Authenticate {
                 let hash_index = url.find("token=");
                 if hash_index.is_some() {
                     let token: String = url.chars().skip(hash_index.unwrap_or(0) + token.len()).take(url.len() - token.len()).collect();
+                    let fetch_user_url = format!("https://api.trello.com/1/members/me/?key={}&token={}", API_KEY, token);
+                    let body = reqwest::get(fetch_user_url)
+                        .await.ok().unwrap()
+                        .text()
+                        .await.ok();
+                    println!("body = {:?}", body);
                     println!("{token}");
                 } else {
 
