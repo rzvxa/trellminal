@@ -1,5 +1,5 @@
 use std::{thread, sync::mpsc::{self, Receiver}, time::{Duration, Instant}};
-use crossterm::event::{self, Event as CEvent};
+use crossterm::event::{self, Event as CEvent, KeyEventKind};
 
 pub use crossterm::event::KeyCode;
 pub use crossterm::event::KeyEvent;
@@ -23,7 +23,9 @@ pub fn init() -> EventReceiver {
 
             if event::poll(timeout).expect("poll works") {
                 if let CEvent::Key(key) = event::read().expect("can read events"){
-                    tx.send(Event::Input(key)).expect("can send events");
+                    if key.kind == KeyEventKind::Press {
+                        tx.send(Event::Input(key)).expect("can send events");
+                    }
                 }
             }
 

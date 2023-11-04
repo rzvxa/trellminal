@@ -12,34 +12,42 @@ use super::RenderQueue;
 
 pub trait Page {
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a>;
-    fn update(&mut self, event: Event<KeyEvent>);
+    fn update(&mut self, event: Event<KeyEvent>) -> Option<String>;
 }
 
 pub struct Router {
-    route: String,
+    location: String,
     routes: HashMap<String, Box<dyn Page>>,
 }
 
 impl Router {
     pub fn new() -> Self {
-        Self { route: String::from("/"), routes: HashMap::new() }
+        Self { location: String::from("/"), routes: HashMap::new() }
     }
 
-    pub fn route<P>(mut self, route: String, page: P) -> Self
+    pub fn location(&self) -> &String {
+        &self.location
+    }
+
+    pub fn route<P>(mut self, location: String, page: P) -> Self
         where P: Page + 'static {
-        self.routes.insert(route, Box::new(page));
+        self.routes.insert(location, Box::new(page));
         self
     }
 
-    pub fn current(&mut self) -> Option<&dyn Page> {
-        match self.routes.get(&self.route) {
+    pub fn navigate(&mut self, location: String) {
+        self.location = location;
+    }
+
+    pub fn current(&self) -> Option<&dyn Page> {
+        match self.routes.get(&self.location) {
             Some(p) => Some(p.as_ref()),
             None => None,
         }
     }
 
     pub fn current_mut(&mut self) -> Option<&mut dyn Page> {
-        match self.routes.get_mut(&self.route) {
+        match self.routes.get_mut(&self.location) {
             Some(p) => Some(p.as_mut()),
             None => None,
         }

@@ -5,7 +5,7 @@ use tui::{
 };
 
 use super::{DrawCall, RenderQueue, State, UIWidget};
-use super::router::Page;
+use crate::ui::router::Page;
 use crate::input::{KeyCode, KeyEvent, Event};
 
 const WELCOME_TEXT: &str = "Hello, World!
@@ -19,7 +19,7 @@ pub struct FirstLoad {
 
 impl Page for FirstLoad {
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
-        let block = Block::default().title("Trellminal").borders(Borders::ALL);
+        let block = Block::default().title("Welcome").borders(Borders::ALL);
 
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
@@ -51,13 +51,13 @@ impl Page for FirstLoad {
         let btns = [
             (
                 0,
-                Paragraph::new("[L]ogin")
+                Paragraph::new("[a]uthenticate")
                     .block(Block::default())
                     .alignment(Alignment::Center),
             ),
             (
                 1,
-                Paragraph::new("[E]xit")
+                Paragraph::new("[q]uit")
                     .block(Block::default())
                     .alignment(Alignment::Center),
             ),
@@ -79,17 +79,42 @@ impl Page for FirstLoad {
         ]
     }
 
-    fn update(&mut self, event: Event<KeyEvent>) {
+    fn update(&mut self, event: Event<KeyEvent>) -> Option<String> {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('l') => { self.selected_button = 0 },
-                KeyCode::Char('h') => { self.selected_button = 1 },
-                KeyCode::Left => { self.selected_button = 1 },
-                KeyCode::Right => { self.selected_button = 0 },
-                // KeyCode::Enter => { self.selected_button = 0 },
-                _ => { },
+                KeyCode::Char('q') => {
+                    Some(String::from("/exit"))
+                },
+                KeyCode::Char('a') => {
+                    Some(String::from("/authenticate"))
+                },
+                KeyCode::Char('l') => {
+                    self.selected_button = 0;
+                    None
+                },
+                KeyCode::Char('h') => {
+                    self.selected_button = 1;
+                    None
+                },
+                KeyCode::Left => {
+                    self.selected_button = 1;
+                    None
+                },
+                KeyCode::Right => {
+                    self.selected_button = 0;
+                    None
+                },
+                KeyCode::Enter => {
+                    match self.selected_button {
+                        0 => Some(String::from("/authenticate")),
+                        1 => Some(String::from("/exit")),
+                        _ => None,
+                    }
+                },
+                _ => None,
             }
-            Event::Tick => {}
+            Event::Tick => None
+
         }
     }
 }
