@@ -20,12 +20,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     loop {
         match event_receiver.recv()? {
             input::Event::Input(event) => match event.code {
-                input::KeyCode::Char('q') => {
+                input::KeyCode::Char('c') if event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
                     break;
                 }
-                _ => { ui::update(&mut terminal, event) }
+                _ => { ui::update(&mut terminal, input::Event::Input(event)) }
             },
-            input::Event::Tick => {}
+            input::Event::Tick => { ui::update(&mut terminal, input::Event::Tick) }
         }
         if !ui::draw(&mut terminal).unwrap_or(false) {
             break;

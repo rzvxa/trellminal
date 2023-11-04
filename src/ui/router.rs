@@ -6,15 +6,13 @@ use tui::layout::{
 };
 
 use std::collections::HashMap;
-use crate::input::KeyEvent;
+use crate::input::{ Event, KeyEvent };
 
-use super::State;
-use super::Database;
 use super::RenderQueue;
 
 pub trait Page {
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a>;
-    fn input(&mut self, event: KeyEvent);
+    fn update(&mut self, event: Event<KeyEvent>);
 }
 
 pub struct Router {

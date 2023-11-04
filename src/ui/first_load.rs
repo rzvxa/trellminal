@@ -6,7 +6,7 @@ use tui::{
 
 use super::{DrawCall, RenderQueue, State, UIWidget};
 use super::router::Page;
-use crate::input::{KeyCode, KeyEvent};
+use crate::input::{KeyCode, KeyEvent, Event};
 
 const WELCOME_TEXT: &str = "Hello, World!
 Welcome to the Trellminal, It's a small and lightweight terminal client for Trello written in Rust.
@@ -79,11 +79,17 @@ impl Page for FirstLoad {
         ]
     }
 
-    fn input(&mut self, event: KeyEvent) {
-        match event.code {
-            KeyCode::Char('l') => { self.selected_button = 0 },
-            KeyCode::Char('h') => { self.selected_button = 1 },
-            _ => { },
+    fn update(&mut self, event: Event<KeyEvent>) {
+        match event {
+            Event::Input(event) => match event.code {
+                KeyCode::Char('l') => { self.selected_button = 0 },
+                KeyCode::Char('h') => { self.selected_button = 1 },
+                KeyCode::Left => { self.selected_button = 1 },
+                KeyCode::Right => { self.selected_button = 0 },
+                // KeyCode::Enter => { self.selected_button = 0 },
+                _ => { },
+            }
+            Event::Tick => {}
         }
     }
 }

@@ -18,7 +18,7 @@ use tui::{
 };
 use crate::state::State;
 use crate::database::Database;
-use crate::input::KeyEvent;
+use crate::input::{ Event, KeyEvent };
 use router::Router;
 
 pub use tui::layout::Rect;
@@ -83,8 +83,8 @@ pub fn init(db: Database, state: State) -> Result<UITerminal, Box<dyn Error>> {
     Ok(UITerminal::new(terminal, db, state, router))
 }
 
-pub fn update(terminal: &mut UITerminal, event: KeyEvent) {
-    terminal.router.current_mut().unwrap().input(event);
+pub fn update(terminal: &mut UITerminal, event: Event<KeyEvent>) {
+    terminal.router.current_mut().unwrap().update(event);
 }
 
 pub fn draw(terminal: &mut UITerminal) -> Result<bool, Box<dyn Error>> {
