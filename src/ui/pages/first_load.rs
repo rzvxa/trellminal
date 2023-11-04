@@ -4,7 +4,7 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use super::{DrawCall, RenderQueue, State, UIWidget};
+use crate::ui::{DrawCall, RenderQueue, UIWidget};
 use crate::database::Database;
 use crate::ui::router::Page;
 use crate::input::{KeyCode, KeyEvent, Event};

@@ -5,7 +5,7 @@ use tui::{
 
 use const_format::formatcp;
 
-use super::{DrawCall, RenderQueue, UIWidget};
+use crate::ui::{DrawCall, RenderQueue, UIWidget};
 use crate::database::Database;
 use crate::input::{Event, KeyEvent, RespondWithPage};
 use crate::ui::router::Page;
@@ -17,8 +17,6 @@ const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
 
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}&return_url=http://127.0.0.1:9999/auth");
 
-// const LOGO_XXS: &str = "Trellminal";
-//
 const LOGO_XXS: &str = "_____|Trellminal Logo(But not really, Your Terminal is small)|_____";
 
 const LOGO_XS: &str = "███████

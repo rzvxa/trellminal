@@ -1,6 +1,4 @@
-mod authenticate;
-mod first_load;
-mod header;
+mod pages;
 mod router;
 
 use crate::database::Database;
@@ -18,6 +16,8 @@ use tui::{
     widgets::{BarChart, Block, Chart, Clear, Gauge, List, Paragraph, Sparkline, Table, Tabs},
     Terminal,
 };
+
+use pages::{authenticate::Authenticate, first_load::FirstLoad};
 
 pub use tui::layout::Rect;
 
@@ -81,9 +81,9 @@ pub fn init(db: Database, state: State) -> Result<UITerminal, Box<dyn Error>> {
     let mut router = Router::new()
         .route(
             "/authenticate".to_string(),
-            authenticate::Authenticate::new(),
+            Authenticate::new(),
         )
-        .route("/first_load".to_string(), first_load::FirstLoad::new());
+        .route("/first_load".to_string(), FirstLoad::new());
     router.navigate(String::from(if db.first_load {
         "/first_load"
     } else {
