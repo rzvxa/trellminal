@@ -17,18 +17,60 @@ const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
 
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}&return_url=http://127.0.0.1:9999/auth");
 
-const LOGO_XS: &str = "Trellminal";
+// const LOGO_XXS: &str = "Trellminal";
+//
+const LOGO_XXS: &str = "_____|Trellminal Logo(But not really, Your Terminal is small)|_____";
 
-const LOGO_SM: &str = "██ ██   
-██   ";
+const LOGO_XS: &str = "███████
+█  █  █
+█  ████
+███████";
 
-const LOGO_MD: &str = "███████████
+const LOGO_SM: &str = "███████████
 ██   █   ██
 ██   █   ██
 ██   ██████
 ███████████";
 
-const LOGO_LR: &str = " ████████████████████████████ 
+const LOGO_MD: &str = "
+█████████████████
+███    ███    ███
+███    ███    ███
+███    ███    ███
+███    ██████████
+███    ██████████
+███    ██████████
+█████████████████";
+
+const LOGO_NR: &str = "█████████████████████
+███      ███      ███
+███      ███      ███
+███      ███      ███
+███      ███      ███
+███      ███      ███
+███      ████████████
+███      ████████████
+███      ████████████
+█████████████████████
+█████████████████████";
+
+const LOGO_LR: &str = " █████████████████████████ 
+███████████████████████████
+████        ███        ████
+████        ███        ████
+████        ███        ████
+████        ███        ████
+████        ███        ████
+████        ███        ████
+████        ███████████████
+████        ███████████████
+████        ███████████████
+███████████████████████████
+███████████████████████████
+ █████████████████████████ ";
+
+
+const LOGO_XL: &str = " ████████████████████████████ 
 ██████████████████████████████
 ████         ████         ████
 ████         ████         ████
@@ -47,13 +89,19 @@ const LOGO_LR: &str = " ██████████████████�
 
 fn logo(rect: &Rect) -> &'static str {
     if rect.width >= 31 && rect.height >= 16 {
+        LOGO_XL
+    } else if rect.width >= 28 && rect.height >= 14 {
         LOGO_LR
-    } else if rect.width >= 21 && rect.height >= 4 {
+    } else if rect.width >= 21 && rect.height >= 11 {
+        LOGO_NR
+    } else if rect.width >= 17 && rect.height >= 9 {
         LOGO_MD
-    } else if rect.width >= 11 && rect.height >= 2 {
+    } else if rect.width >= 11 && rect.height >= 5 {
         LOGO_SM
-    } else {
+    } else if rect.width >= 7 && rect.height >= 4 {
         LOGO_XS
+    } else {
+        LOGO_XXS
     }
 }
 
@@ -74,10 +122,19 @@ impl Page for Authenticate {
         let center_layout = Layout::default()
             .margin(1)
             .direction(Direction::Vertical)
-            .constraints([Constraint::Percentage(60), Constraint::Percentage(30), Constraint::Percentage(10)])
+            .constraints([
+                Constraint::Percentage(60),
+                Constraint::Length(1),
+                Constraint::Percentage(30),
+                Constraint::Percentage(10),
+            ])
             .split(center_rect);
 
         let logo = Paragraph::new(logo(&center_layout[0]))
+            .block(Block::default())
+            .wrap(Wrap { trim: true })
+            .alignment(Alignment::Center);
+        let title = Paragraph::new("Trellminal")
             .block(Block::default())
             .wrap(Wrap { trim: true })
             .alignment(Alignment::Center);
@@ -92,8 +149,9 @@ impl Page for Authenticate {
         vec![
             DrawCall::new(UIWidget::Block(block), rect),
             DrawCall::new(UIWidget::Paragraph(logo), center_layout[0]),
-            DrawCall::new(UIWidget::Paragraph(text), center_layout[1]),
-            DrawCall::new(UIWidget::Paragraph(link), center_layout[2]),
+            DrawCall::new(UIWidget::Paragraph(title), center_layout[1]),
+            DrawCall::new(UIWidget::Paragraph(text), center_layout[2]),
+            DrawCall::new(UIWidget::Paragraph(link), center_layout[3]),
         ]
     }
 
