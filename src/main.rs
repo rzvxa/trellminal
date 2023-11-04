@@ -1,17 +1,21 @@
-use std::{error::Error, thread, time::Duration};
+use std::error::Error;
 
 mod database;
 mod input;
+mod state;
 mod ui;
+
+use state::State;
 
 const DATABASE_PATH: &str = "~/.trellminaldb";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let mut db = database::load_database(DATABASE_PATH);
+    let db = database::load_database(DATABASE_PATH);
+    let state = State::new();
 
     let event_receiver = input::init();
-    let mut terminal = ui::init().unwrap();
+    let mut terminal = ui::init(db, state).unwrap();
 
     loop {
         match event_receiver.recv()? {
@@ -23,7 +27,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             },
             input::Event::Tick => {}
         }
-        if !ui::draw(&mut terminal, &db).unwrap_or(false) {
+        if !ui::draw(&mut terminal).unwrap_or(false) {
             break;
         }
     }

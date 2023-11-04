@@ -11,6 +11,8 @@ use tui::{
     },
     Terminal,
 };
+use crate::state::State;
+use crate::database::Database;
 
 pub use tui::layout::Rect;
 
@@ -20,7 +22,19 @@ mod first_load;
 mod header;
 mod root;
 
-type UITerminal = Terminal<CrosstermBackend<io::Stdout>>;
+type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
+
+pub struct UITerminal {
+    pub internal: InternalTerminal,
+    pub db: Database,
+    pub state: State,
+}
+
+impl UITerminal {
+    pub fn new(internal: InternalTerminal, db: Database, state: State) -> Self {
+        Self { internal, db, state }
+    }
+}
 
 enum UIWidget<'a> {
     Block(Block<'a>),
@@ -49,22 +63,19 @@ impl<'a> DrawCall<'a> {
 
 pub type RenderQueue<'a> = Vec<DrawCall<'a>>;
 
-pub fn init() -> Result<UITerminal, Box<dyn Error>> {
+pub fn init(db: Database, state: State) -> Result<UITerminal, Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
-    Ok(terminal)
+    Ok(UITerminal::new(terminal, db, state))
 }
 
-pub fn draw(
-    terminal: &mut UITerminal,
-    db: &super::database::Database,
-) -> Result<bool, Box<dyn Error>> {
-    terminal.draw(|frame| {
+pub fn draw(terminal: &mut UITerminal) -> Result<bool, Box<dyn Error>> {
+    terminal.internal.draw(|frame| {
         let rect = frame.size();
-        let mut widgets = root::draw(rect, db);
+        let mut widgets = root::draw(rect, &terminal.db);
         widgets.sort_by(|lhs, rhs| {
             lhs.z.cmp(&rhs.z)
         });
@@ -89,10 +100,10 @@ pub fn draw(
 pub fn fini(terminal: &mut UITerminal) -> Result<(), Box<dyn Error>> {
     disable_raw_mode()?;
     execute!(
-        terminal.backend_mut(),
+        terminal.internal.backend_mut(),
         LeaveAlternateScreen,
         DisableMouseCapture
     )?;
-    terminal.show_cursor()?;
+    terminal.internal.show_cursor()?;
     Ok(())
 }
