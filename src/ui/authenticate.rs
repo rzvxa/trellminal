@@ -114,8 +114,6 @@ impl Page for Authenticate {
                         .text()
                         .await.ok();
                     req.respond_with_view("auth_success.html").unwrap();
-                } else {
-
                 }
                 None
             },
