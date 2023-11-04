@@ -1,7 +1,8 @@
-use std::{thread, sync::mpsc::{self, Receiver}, time::{Duration, Instant}};
+use std::{thread, sync::mpsc::{self, Receiver}, time::{Duration, Instant}, io::Error as IoError};
 use crossterm::event::{self, Event as CEvent, KeyEventKind};
 
-use tiny_http::{Server, Response, Request};
+use tiny_http::{Server, Response};
+pub use tiny_http::Request;
 
 pub use crossterm::event::KeyCode;
 pub use crossterm::event::KeyEvent;
@@ -12,6 +13,18 @@ pub enum Event<T> {
     Input(T),
     Request(Request),
     Tick,
+}
+
+pub trait RespondWithPage {
+    fn respond_with_view(self, view_path: &str) -> Result<(), IoError>;
+}
+
+impl RespondWithPage for Request {
+    fn respond_with_view(self, view_path: &str) -> Result<(), IoError> {
+        let auth_view = std::fs::File::open(format!("res/www/{view_path}")).unwrap();
+        let response = Response::from_file(auth_view);
+        self.respond(response)
+    }
 }
 
 pub fn init() -> EventReceiver {
@@ -46,9 +59,7 @@ pub fn init() -> EventReceiver {
         for req in server.incoming_requests() {
             match req.url() {
                 "/auth" | "/auth/" => {
-                    let auth_view = std::fs::File::open("res/www/auth.html").unwrap();
-                    let response = Response::from_file(auth_view);
-                    req.respond(response).unwrap();
+                    req.respond_with_view("auth.html").unwrap();
                 },
                 _ => tx_server.send(Event::Request(req)).expect("request propagated"),
             }

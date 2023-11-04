@@ -7,7 +7,7 @@ use const_format::formatcp;
 
 use super::{DrawCall, RenderQueue, UIWidget};
 use crate::database::Database;
-use crate::input::{Event, KeyEvent};
+use crate::input::{Event, KeyEvent, RespondWithPage};
 use crate::ui::router::Page;
 
 pub struct Authenticate {}
@@ -113,8 +113,7 @@ impl Page for Authenticate {
                         .await.ok().unwrap()
                         .text()
                         .await.ok();
-                    println!("body = {:?}", body);
-                    println!("{token}");
+                    req.respond_with_view("auth_success.html").unwrap();
                 } else {
 
                 }
