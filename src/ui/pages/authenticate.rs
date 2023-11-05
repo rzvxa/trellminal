@@ -7,9 +7,9 @@ use tui::{
 use const_format::formatcp;
 
 use crate::database::Database;
-use crate::input::{Event, KeyEvent, KeyCode, RespondWithPage};
-use crate::ui::router::Page;
-use crate::ui::{DrawCall, RenderQueue, UIWidget, logo};
+use crate::input::{Event, KeyCode, KeyEvent, RespondWithPage};
+use crate::ui::{Operation, Page};
+use crate::ui::{logo, DrawCall, RenderQueue, UIWidget};
 
 pub struct Authenticate {
     selected_button: u8,
@@ -23,9 +23,9 @@ const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Authenticate {
-    fn mount(&mut self) { }
+    fn mount(&mut self) {}
 
-    fn unmount(&mut self) { }
+    fn unmount(&mut self) {}
 
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
         let block = Block::default().title("Authenticate").borders(Borders::ALL);
@@ -105,35 +105,33 @@ impl Page for Authenticate {
         ]
     }
 
-    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Option<String> {
+    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Operation {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('1') => Some(String::from("/authenticate/browser")),
-                KeyCode::Char('2') => Some(String::from("/authenticate/manual")),
+                KeyCode::Char('1') => Operation::Navigate(String::from("/authenticate/browser")),
+                KeyCode::Char('2') => Operation::Navigate(String::from("/authenticate/manual")),
                 KeyCode::Char('j') => {
                     self.selected_button = 1;
-                    None
-                },
+                    Operation::None
+                }
                 KeyCode::Char('k') => {
                     self.selected_button = 0;
-                    None
-                },
+                    Operation::None
+                }
                 KeyCode::Down => {
                     self.selected_button = 1;
-                    None
-                },
+                    Operation::None
+                }
                 KeyCode::Up => {
                     self.selected_button = 0;
-                    None
+                    Operation::None
+                }
+                KeyCode::Enter => match self.selected_button {
+                    0 => Operation::Navigate(String::from("/authenticate/browser")),
+                    1 => Operation::Navigate(String::from("/authenticate/manual")),
+                    _ => Operation::None,
                 },
-                KeyCode::Enter => {
-                    match self.selected_button {
-                        0 => Some(String::from("/authenticate/browser")),
-                        1 => Some(String::from("/authenticate/manual")),
-                        _ => None,
-                    }
-                },
-                _ => None,
+                _ => Operation::None,
             },
             Event::Request(req) => {
                 let url = req.url();
@@ -158,9 +156,9 @@ impl Page for Authenticate {
                         .ok();
                     req.respond_with_view("auth_success.html").unwrap();
                 }
-                None
+                Operation::None
             }
-            Event::Tick => None,
+            Event::Tick => Operation::None,
         }
     }
 }

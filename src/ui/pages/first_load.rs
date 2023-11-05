@@ -4,10 +4,10 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use crate::ui::{DrawCall, RenderQueue, UIWidget};
 use crate::database::Database;
-use crate::ui::router::Page;
-use crate::input::{KeyCode, KeyEvent, Event};
+use crate::input::{Event, KeyCode, KeyEvent};
+use crate::ui::{DrawCall, RenderQueue, UIWidget};
+use crate::ui::{Operation, Page};
 
 const WELCOME_TEXT: &str = "Hello, World!
 Welcome to the Trellminal, It's a small and lightweight terminal client for Trello written in Rust.
@@ -21,9 +21,9 @@ pub struct FirstLoad {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for FirstLoad {
-    fn mount(&mut self) { }
+    fn mount(&mut self) {}
 
-    fn unmount(&mut self) { }
+    fn unmount(&mut self) {}
 
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
         let block = Block::default().title("Welcome").borders(Borders::ALL);
@@ -87,37 +87,35 @@ impl Page for FirstLoad {
         ]
     }
 
-    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Option<String> {
+    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Operation {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('q') => Some(String::from("/exit")),
-                KeyCode::Char('a') => Some(String::from("/authenticate")),
+                KeyCode::Char('q') => Operation::Exit,
+                KeyCode::Char('a') => Operation::Navigate(String::from("/authenticate")),
                 KeyCode::Char('l') => {
                     self.selected_button = 0;
-                    None
-                },
+                    Operation::None
+                }
                 KeyCode::Char('h') => {
                     self.selected_button = 1;
-                    None
-                },
+                    Operation::None
+                }
                 KeyCode::Left => {
                     self.selected_button = 1;
-                    None
-                },
+                    Operation::None
+                }
                 KeyCode::Right => {
                     self.selected_button = 0;
-                    None
+                    Operation::None
+                }
+                KeyCode::Enter => match self.selected_button {
+                    0 => Operation::Navigate(String::from("/authenticate")),
+                    1 => Operation::Navigate(String::from("/exit")),
+                    _ => Operation::None,
                 },
-                KeyCode::Enter => {
-                    match self.selected_button {
-                        0 => Some(String::from("/authenticate")),
-                        1 => Some(String::from("/exit")),
-                        _ => None,
-                    }
-                },
-                _ => None,
-            }
-            _ => None
+                _ => Operation::None,
+            },
+            _ => Operation::None,
         }
     }
 }
@@ -127,5 +125,3 @@ impl FirstLoad {
         Self { selected_button: 0 }
     }
 }
-
-

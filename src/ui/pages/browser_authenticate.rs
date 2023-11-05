@@ -9,7 +9,7 @@ use webbrowser;
 
 use crate::database::Database;
 use crate::input::{Event, KeyEvent, KeyCode, RespondWithPage};
-use crate::ui::router::Page;
+use crate::ui::{Page, Operation};
 use crate::ui::{DrawCall, RenderQueue, UIWidget, logo};
 
 pub struct BrowserAuthenticate {
@@ -109,35 +109,35 @@ impl Page for BrowserAuthenticate {
         ]
     }
 
-    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Option<String> {
+    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Operation {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('1') => Some(String::from("/authenticate")),
-                KeyCode::Char('2') => Some(String::from("/exit")),
+                KeyCode::Char('1') => Operation::Navigate(String::from("/authenticate")),
+                KeyCode::Char('2') => Operation::Exit,
                 KeyCode::Char('j') => {
                     self.selected_button = 1;
-                    None
+                    Operation::None
                 },
                 KeyCode::Char('k') => {
                     self.selected_button = 0;
-                    None
+                    Operation::None
                 },
                 KeyCode::Down => {
                     self.selected_button = 1;
-                    None
+                    Operation::None
                 },
                 KeyCode::Up => {
                     self.selected_button = 0;
-                    None
+                    Operation::None
                 },
                 KeyCode::Enter => {
                     match self.selected_button {
-                        0 => Some(String::from("/authenticate")),
-                        1 => Some(String::from("/exit")),
-                        _ => None,
+                        0 => Operation::Navigate(String::from("/authenticate")),
+                        1 => Operation::Navigate(String::from("/exit")),
+                        _ => Operation::None,
                     }
                 },
-                _ => None,
+                _ => Operation::None,
             },
             Event::Request(req) => {
                 let url = req.url();
@@ -162,9 +162,9 @@ impl Page for BrowserAuthenticate {
                         .ok();
                     req.respond_with_view("auth_success.html").unwrap();
                 }
-                None
+                Operation::None
             }
-            Event::Tick => None,
+            Event::Tick => Operation::None,
         }
     }
 }

@@ -22,7 +22,23 @@ use pages::{
     authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
 };
 
+use async_trait::async_trait;
+
 pub use tui::layout::Rect;
+
+pub enum Operation {
+    None,
+    Navigate(String),
+    Exit,
+}
+
+#[async_trait]
+pub trait Page {
+    fn mount(&mut self);
+    fn unmount(&mut self);
+    fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a>;
+    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Operation;
+}
 
 type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
 
@@ -107,15 +123,12 @@ pub async fn update(
         .update(event, &mut terminal.db)
         .await
     {
-        Some(loc) if *terminal.router.location() != loc => {
-            if loc == "/exit" {
-                Ok(false)
-            } else {
-                terminal.router.navigate(loc);
-                Ok(true)
-            }
+        Operation::Navigate(loc) => {
+            terminal.router.navigate(loc);
+            Ok(true)
         }
-        _ => Ok(true),
+        Operation::Exit => Ok(false),
+        Operation::None => Ok(true),
     }
 }
 
