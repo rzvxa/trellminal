@@ -19,16 +19,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut terminal = ui::init(db, state).unwrap();
 
     loop {
-        match event_receiver.recv()? {
-            input::Event::Input(event) => match event.code {
-                input::KeyCode::Char('c') if event.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) => {
-                    break;
-                }
-                _ => { ui::update(&mut terminal, input::Event::Input(event)).await }
-            },
-            input::Event::Request(req) => { ui::update(&mut terminal, input::Event::Request(req)).await }
-            input::Event::Tick => { ui::update(&mut terminal, input::Event::Tick).await }
+        let event = event_receiver.recv().unwrap();
+        if let input::Event::Input(i) = event {
+            if i.code == input::KeyCode::Char('c') && i.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                break;
+            }
         }
+        ui::update(&mut terminal, event).await;
+
         if !ui::draw(&mut terminal).unwrap_or(false) {
             break;
         }

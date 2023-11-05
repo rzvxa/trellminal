@@ -15,6 +15,8 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait Page {
+    fn mount(&mut self);
+    fn unmount(&mut self);
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a>;
     async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Option<String>;
 }
@@ -40,7 +42,17 @@ impl Router {
     }
 
     pub fn navigate(&mut self, location: String) {
-        self.location = location;
+        if self.location != location {
+            match self.current_mut() {
+                Some(cur) => cur.unmount(),
+                _ => { },
+            }
+            self.location = location;
+            match self.current_mut() {
+                Some(cur) => cur.mount(),
+                _ => { },
+            }
+        }
     }
 
     pub fn current(&self) -> Option<&dyn Page> {
@@ -57,31 +69,3 @@ impl Router {
         }
     }
 }
-
-// fn select_view<'a>(rect: Rect, db: &Database, state: &State) -> RenderQueue<'a> {
-//     match db.first_load {
-//         true => {
-//             super::first_load::draw(rect, state)
-//         }
-//         false => {
-//             let layout = Layout::default()
-//                 .direction(Direction::Vertical)
-//                 .constraints(
-//                     [
-//                     Constraint::Length(7),
-//                     Constraint::Min(24),
-//                     ]
-//                     .as_ref(),
-//                 )
-//                 .split(rect);
-//             let mut nodes = super::header::draw(layout[0]);
-//             nodes.append(&mut super::authenticate::draw(layout[1]));
-//             return nodes
-//         }
-//     }
-// }
-//
-// pub fn draw<'a>(rect: Rect, db: &Database, state: &State) -> RenderQueue<'a> {
-//     return select_view(rect, db, state);
-// }
-

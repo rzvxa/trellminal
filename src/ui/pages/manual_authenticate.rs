@@ -9,9 +9,9 @@ use const_format::formatcp;
 use crate::database::Database;
 use crate::input::{Event, KeyEvent, KeyCode, RespondWithPage};
 use crate::ui::router::Page;
-use crate::ui::{DrawCall, RenderQueue, UIWidget, logo};
+use crate::ui::{DrawCall, RenderQueue, UIWidget};
 
-pub struct Authenticate {
+pub struct ManualAuthenticate {
     selected_button: u8,
 }
 const APP_NAME: &str = "Trellminal";
@@ -20,15 +20,12 @@ const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
 
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}&return_url=http://127.0.0.1:9999/auth");
 
+
 use async_trait::async_trait;
 #[async_trait]
-impl Page for Authenticate {
-    fn mount(&mut self) { }
-
-    fn unmount(&mut self) { }
-
+impl Page for ManualAuthenticate {
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
-        let block = Block::default().title("Authenticate").borders(Borders::ALL);
+        let block = Block::default().title("ManualAuthenticate").borders(Borders::ALL);
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -58,7 +55,7 @@ impl Page for Authenticate {
             ])
             .split(center_layout[3]);
 
-        let logo = Paragraph::new(logo::get(&center_layout[0]))
+        let logo = Paragraph::new(logo(&center_layout[0]))
             .block(Block::default())
             .wrap(Wrap { trim: true })
             .alignment(Alignment::Center);
@@ -108,7 +105,7 @@ impl Page for Authenticate {
     async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Option<String> {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('1') => Some(String::from("/authenticate/browser")),
+                KeyCode::Char('1') => Some(String::from("/authenticate/auto")),
                 KeyCode::Char('2') => Some(String::from("/authenticate/manual")),
                 KeyCode::Char('j') => {
                     self.selected_button = 1;
@@ -128,7 +125,7 @@ impl Page for Authenticate {
                 },
                 KeyCode::Enter => {
                     match self.selected_button {
-                        0 => Some(String::from("/authenticate/browser")),
+                        0 => Some(String::from("/authenticate/auto")),
                         1 => Some(String::from("/authenticate/manual")),
                         _ => None,
                     }
@@ -165,8 +162,9 @@ impl Page for Authenticate {
     }
 }
 
-impl Authenticate {
+impl ManualAuthenticate {
     pub fn new() -> Self {
         Self { selected_button: 0 }
     }
 }
+

@@ -5,13 +5,15 @@ use tui::{
 };
 
 use const_format::formatcp;
+use webbrowser;
 
 use crate::database::Database;
 use crate::input::{Event, KeyEvent, KeyCode, RespondWithPage};
 use crate::ui::router::Page;
 use crate::ui::{DrawCall, RenderQueue, UIWidget, logo};
 
-pub struct Authenticate {
+pub struct BrowserAuthenticate {
+    failed_open_browser: bool,
     selected_button: u8,
 }
 const APP_NAME: &str = "Trellminal";
@@ -22,13 +24,15 @@ const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day
 
 use async_trait::async_trait;
 #[async_trait]
-impl Page for Authenticate {
-    fn mount(&mut self) { }
+impl Page for BrowserAuthenticate {
+    fn mount(&mut self) {
+        self.failed_open_browser = !webbrowser::open(AUTH_URL).is_ok();
+    }
 
     fn unmount(&mut self) { }
 
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
-        let block = Block::default().title("Authenticate").borders(Borders::ALL);
+        let block = Block::default().title("Authenticate using a browser").borders(Borders::ALL);
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -73,14 +77,14 @@ impl Page for Authenticate {
         let btns = [
             (
                 0,
-                Paragraph::new("[1] Login automatically via browser")
+                Paragraph::new("[1] Choose another method")
                     .block(Block::default())
                     .wrap(Wrap { trim: true })
                     .alignment(Alignment::Center),
             ),
             (
                 1,
-                Paragraph::new("[2] Get login link and enter token manually")
+                Paragraph::new("[2] Cancel and exit")
                     .block(Block::default())
                     .wrap(Wrap { trim: true })
                     .alignment(Alignment::Center),
@@ -108,8 +112,8 @@ impl Page for Authenticate {
     async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Option<String> {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('1') => Some(String::from("/authenticate/browser")),
-                KeyCode::Char('2') => Some(String::from("/authenticate/manual")),
+                KeyCode::Char('1') => Some(String::from("/authenticate")),
+                KeyCode::Char('2') => Some(String::from("/exit")),
                 KeyCode::Char('j') => {
                     self.selected_button = 1;
                     None
@@ -128,8 +132,8 @@ impl Page for Authenticate {
                 },
                 KeyCode::Enter => {
                     match self.selected_button {
-                        0 => Some(String::from("/authenticate/browser")),
-                        1 => Some(String::from("/authenticate/manual")),
+                        0 => Some(String::from("/authenticate")),
+                        1 => Some(String::from("/exit")),
                         _ => None,
                     }
                 },
@@ -165,8 +169,8 @@ impl Page for Authenticate {
     }
 }
 
-impl Authenticate {
+impl BrowserAuthenticate {
     pub fn new() -> Self {
-        Self { selected_button: 0 }
+        Self { failed_open_browser: false, selected_button: 0 }
     }
 }

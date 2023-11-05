@@ -1,4 +1,5 @@
 mod pages;
+mod logo;
 mod router;
 
 use crate::database::Database;
@@ -17,7 +18,11 @@ use tui::{
     Terminal,
 };
 
-use pages::{authenticate::Authenticate, first_load::FirstLoad};
+use pages::{
+    authenticate::Authenticate,
+    first_load::FirstLoad,
+    browser_authenticate::BrowserAuthenticate,
+};
 
 pub use tui::layout::Rect;
 
@@ -79,10 +84,8 @@ pub fn init(db: Database, state: State) -> Result<UITerminal, Box<dyn Error>> {
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
     let mut router = Router::new()
-        .route(
-            "/authenticate".to_string(),
-            Authenticate::new(),
-        )
+        .route("/authenticate".to_string(), Authenticate::new())
+        .route("/authenticate/browser".to_string(), BrowserAuthenticate::new())
         .route("/first_load".to_string(), FirstLoad::new());
     router.navigate(String::from(if db.first_load {
         "/first_load"

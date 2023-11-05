@@ -21,6 +21,10 @@ pub struct FirstLoad {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for FirstLoad {
+    fn mount(&mut self) { }
+
+    fn unmount(&mut self) { }
+
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
         let block = Block::default().title("Welcome").borders(Borders::ALL);
 
@@ -86,12 +90,8 @@ impl Page for FirstLoad {
     async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Option<String> {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('q') => {
-                    Some(String::from("/exit"))
-                },
-                KeyCode::Char('a') => {
-                    Some(String::from("/authenticate"))
-                },
+                KeyCode::Char('q') => Some(String::from("/exit")),
+                KeyCode::Char('a') => Some(String::from("/authenticate")),
                 KeyCode::Char('l') => {
                     self.selected_button = 0;
                     None
