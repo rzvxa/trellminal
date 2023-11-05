@@ -1,5 +1,5 @@
-mod pages;
 mod logo;
+mod pages;
 mod router;
 
 use crate::database::Database;
@@ -19,9 +19,7 @@ use tui::{
 };
 
 use pages::{
-    authenticate::Authenticate,
-    first_load::FirstLoad,
-    browser_authenticate::BrowserAuthenticate,
+    authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
 };
 
 pub use tui::layout::Rect;
@@ -85,7 +83,10 @@ pub fn init(db: Database, state: State) -> Result<UITerminal, Box<dyn Error>> {
     let terminal = Terminal::new(backend)?;
     let mut router = Router::new()
         .route("/authenticate".to_string(), Authenticate::new())
-        .route("/authenticate/browser".to_string(), BrowserAuthenticate::new())
+        .route(
+            "/authenticate/browser".to_string(),
+            BrowserAuthenticate::new(),
+        )
         .route("/first_load".to_string(), FirstLoad::new());
     router.navigate(String::from(if db.first_load {
         "/first_load"
@@ -95,38 +96,50 @@ pub fn init(db: Database, state: State) -> Result<UITerminal, Box<dyn Error>> {
     Ok(UITerminal::new(terminal, db, state, router))
 }
 
-pub async fn update(terminal: &mut UITerminal, event: Event<KeyEvent>) {
-    match terminal.router.current_mut().unwrap().update(event, &mut terminal.db).await {
-        Some(loc) if *terminal.router.location() != loc => terminal.router.navigate(loc),
-        _ => {}
+pub async fn update(
+    terminal: &mut UITerminal,
+    event: Event<KeyEvent>,
+) -> Result<bool, Box<dyn Error>> {
+    match terminal
+        .router
+        .current_mut()
+        .unwrap()
+        .update(event, &mut terminal.db)
+        .await
+    {
+        Some(loc) if *terminal.router.location() != loc => {
+            if loc == "/exit" {
+                Ok(false)
+            } else {
+                terminal.router.navigate(loc);
+                Ok(true)
+            }
+        }
+        _ => Ok(true),
     }
 }
 
-pub fn draw(terminal: &mut UITerminal) -> Result<bool, Box<dyn Error>> {
-    if terminal.router().location() != "/exit" {
-        terminal.internal.draw(|frame| {
-            let rect = frame.size();
-            let mut widgets = terminal.router.current().unwrap().draw(rect);
-            widgets.sort_by(|lhs, rhs| lhs.z.cmp(&rhs.z));
-            widgets.into_iter().for_each(|w| {
-                match w.widget {
-                    UIWidget::Block(widget) => frame.render_widget(widget, w.rect),
-                    UIWidget::Tabs(widget) => frame.render_widget(widget, w.rect),
-                    UIWidget::List(widget) => frame.render_widget(widget, w.rect),
-                    UIWidget::Table(widget) => frame.render_widget(widget, w.rect),
-                    UIWidget::Paragraph(widget) => frame.render_widget(widget, w.rect),
-                    UIWidget::Chart(widget) => frame.render_widget(widget, w.rect),
-                    UIWidget::BarChart(widget) => frame.render_widget(widget, w.rect),
-                    UIWidget::Gauge(widget) => frame.render_widget(widget, w.rect),
-                    UIWidget::Sparkline(widget) => frame.render_widget(widget, w.rect),
-                    UIWidget::Clear(widget) => frame.render_widget(widget, w.rect),
-                };
-            });
-        })?;
-        Ok(true)
-    } else {
-        Ok(false)
-    }
+pub fn draw(terminal: &mut UITerminal) -> Result<(), Box<dyn Error>> {
+    terminal.internal.draw(|frame| {
+        let rect = frame.size();
+        let mut widgets = terminal.router.current().unwrap().draw(rect);
+        widgets.sort_by(|lhs, rhs| lhs.z.cmp(&rhs.z));
+        widgets.into_iter().for_each(|w| {
+            match w.widget {
+                UIWidget::Block(widget) => frame.render_widget(widget, w.rect),
+                UIWidget::Tabs(widget) => frame.render_widget(widget, w.rect),
+                UIWidget::List(widget) => frame.render_widget(widget, w.rect),
+                UIWidget::Table(widget) => frame.render_widget(widget, w.rect),
+                UIWidget::Paragraph(widget) => frame.render_widget(widget, w.rect),
+                UIWidget::Chart(widget) => frame.render_widget(widget, w.rect),
+                UIWidget::BarChart(widget) => frame.render_widget(widget, w.rect),
+                UIWidget::Gauge(widget) => frame.render_widget(widget, w.rect),
+                UIWidget::Sparkline(widget) => frame.render_widget(widget, w.rect),
+                UIWidget::Clear(widget) => frame.render_widget(widget, w.rect),
+            };
+        });
+    })?;
+    Ok(())
 }
 
 pub fn fini(terminal: &mut UITerminal) -> Result<(), Box<dyn Error>> {

@@ -42,16 +42,14 @@ impl Router {
     }
 
     pub fn navigate(&mut self, location: String) {
-        if self.location != location {
-            match self.current_mut() {
-                Some(cur) => cur.unmount(),
-                _ => { },
-            }
-            self.location = location;
-            match self.current_mut() {
-                Some(cur) => cur.mount(),
-                _ => { },
-            }
+        match self.current_mut() {
+            Some(cur) => cur.unmount(),
+            _ => { },
+        }
+        self.location = location;
+        match self.current_mut() {
+            Some(cur) => cur.mount(),
+            _ => { },
         }
     }
 

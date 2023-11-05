@@ -27,11 +27,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 break;
             }
         }
-        ui::update(&mut terminal, event).await;
 
-        if !ui::draw(&mut terminal).unwrap_or(false) {
+        if !ui::update(&mut terminal, event).await.unwrap_or(false) {
             break;
         }
+
+        ui::draw(&mut terminal).unwrap();
     }
 
     ui::fini(&mut terminal).unwrap();
