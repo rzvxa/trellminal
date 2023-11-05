@@ -7,7 +7,6 @@ mod ui;
 
 use state::State;
 
-
 const DATABASE_PATH: &str = "~/.trellminaldb";
 
 #[tokio::main]
@@ -21,7 +20,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
     loop {
         let event = event_receiver.recv().unwrap();
         if let input::Event::Input(i) = event {
-            if i.code == input::KeyCode::Char('c') && i.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+            if i.code == input::KeyCode::Char('c')
+                && i.modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL)
+            {
                 break;
             }
         }
@@ -30,7 +32,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         if !ui::draw(&mut terminal).unwrap_or(false) {
             break;
         }
-
     }
 
     ui::fini(&mut terminal).unwrap();
