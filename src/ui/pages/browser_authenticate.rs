@@ -183,18 +183,21 @@ impl BrowserAuthenticate {
         let url = req.url();
         if url.starts_with("/auth") {
             req.respond_with_html("auth.html").unwrap();
+            Operation::None
         } else if url.starts_with(TOKEN_ROUTE) {
             let token: String = url
                 .chars()
                 .skip(TOKEN_ROUTE_LEN)
                 .take(url.len() - TOKEN_ROUTE_LEN)
                 .collect();
-            db.first_load = false;
-            api.auth(token);
+            api.auth(token.clone());
             let user = api.members_me().await.unwrap();
-            req.respond(user.username).unwrap();
+            db.users.insert(user.username, token);
+            db.first_load = false;
+            req.respond_with_html("auth_success.html").unwrap();
+            Operation::Navigate("/".to_string())
+        } else {
+            Operation::None
         }
-
-        Operation::None
     }
 }

@@ -1,28 +1,35 @@
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, fs, error::Error, path::Path};
 use toml;
-use std::fs;
-use std::path::Path;
-use std::collections::HashMap;
-use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Database {
     pub first_load: bool,
     pub users: HashMap<String, String>,
+    path: String,
 }
 
-fn create_default_db() -> Database {
-    return Database {
-        first_load: true,
-        users: HashMap::new(),
+impl Database {
+    pub fn new(path: String) -> Self {
+        Database {
+            first_load: true,
+            users: HashMap::new(),
+            path,
+        }
     }
-}
+    pub fn load(path: &str) -> Self {
+        let p = Path::new(path);
+        if p.exists() {
+            let raw = fs::read_to_string(p).unwrap();
+            return toml::from_str(&raw).unwrap();
+        } else {
+            return Database::new(path.to_string());
+        }
+    }
 
-pub fn load_database(path: &str) -> Database {
-    let path = Path::new(path);
-    if path.exists() {
-        let raw = fs::read_to_string(path).unwrap();
-        return toml::from_str(&raw).unwrap();
-    } else {
-        return create_default_db();
+    pub fn save(&self) -> Result<(), Box<dyn Error>> {
+        let content = toml::to_string(self)?;
+        fs::write(&self.path, content)?;
+        Ok(())
     }
 }

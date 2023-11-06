@@ -20,6 +20,7 @@ use tui::{
 
 use pages::{
     authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
+    home::Home,
 };
 
 use async_trait::async_trait;
@@ -110,12 +111,13 @@ pub fn init(
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
     let mut router = Router::new()
+        .route("/first_load".to_string(), FirstLoad::new())
         .route("/authenticate".to_string(), Authenticate::new())
         .route(
             "/authenticate/browser".to_string(),
             BrowserAuthenticate::new(),
         )
-        .route("/first_load".to_string(), FirstLoad::new());
+        .route("/".to_string(), Home::new());
     router.navigate(
         String::from(if db.first_load { "/first_load" } else { "/" }),
         event_sender.clone(),

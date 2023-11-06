@@ -1,19 +1,35 @@
-use std::error::Error;
-
 mod api;
 mod database;
-mod models;
 mod input;
+mod models;
 mod ui;
+
+use home::home_dir as _home_dir;
+use std::error::Error;
 
 // public key
 const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
 
-const DATABASE_PATH: &str = "~/.trellminaldb";
+fn home_dir() -> Option<String> {
+    match _home_dir() {
+        Some(pathbuf) => match pathbuf.into_os_string().into_string() {
+            Ok(home) => Some(home),
+            Err(_) => None,
+        },
+        None => None,
+    }
+}
+
+fn db_path() -> String {
+    match home_dir() {
+        Some(home) => format!("{}/.trellminaldb", home),
+        None => format!("{}/.trellminaldb", "~"),
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let db = database::load_database(DATABASE_PATH);
+    let db = database::Database::load(db_path().as_str());
     let api = api::Api::new(API_KEY.to_string());
 
     let (event_sender, event_receiver) = input::init();
@@ -38,6 +54,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     ui::fini(&mut terminal).unwrap();
+
+    terminal.db.save().expect("Failed to sync database");
 
     Ok(())
 }
