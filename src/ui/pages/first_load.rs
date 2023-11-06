@@ -4,6 +4,7 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
+use crate::api::Api;
 use crate::database::Database;
 use crate::input::{Event, KeyCode, EventSender};
 use crate::ui::{DrawCall, RenderQueue, UIWidget};
@@ -87,7 +88,7 @@ impl Page for FirstLoad {
         ]
     }
 
-    async fn update(&mut self, event: Event, db: &mut Database) -> Operation {
+    async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => Operation::Exit,

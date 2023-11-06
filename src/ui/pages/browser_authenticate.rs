@@ -4,11 +4,12 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use serde_json;
+use crate::API_KEY;
+use crate::api::{Api, members::Members};
+
 use const_format::formatcp;
 use webbrowser;
 
-use crate::models::User;
 use crate::database::Database;
 use crate::input::{
     http_server::{HttpServer, Request, RespondWithHtml},
@@ -23,8 +24,6 @@ pub struct BrowserAuthenticate {
     selected_button: u8,
 }
 const APP_NAME: &str = "Trellminal";
-// public key
-const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
 
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}&return_url=http://127.0.0.1:9999/auth");
 
@@ -137,7 +136,7 @@ impl Page for BrowserAuthenticate {
         ]
     }
 
-    async fn update(&mut self, event: Event, db: &mut Database) -> Operation {
+    async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('1') => Operation::Navigate(String::from("/authenticate")),
@@ -165,7 +164,7 @@ impl Page for BrowserAuthenticate {
                 },
                 _ => Operation::None,
             },
-            Event::Request(req) => self.dispatch_request(req, db).await,
+            Event::Request(req) => self.dispatch_request(req, db, api).await,
             Event::Tick => Operation::None,
         }
     }
@@ -180,7 +179,7 @@ impl BrowserAuthenticate {
         }
     }
 
-    async fn dispatch_request(&self, req: Request, db: &mut Database) -> Operation {
+    async fn dispatch_request(&self, req: Request, db: &mut Database, api: &mut Api) -> Operation {
         let url = req.url();
         if url.starts_with("/auth") {
             req.respond_with_html("auth.html").unwrap();
@@ -191,18 +190,8 @@ impl BrowserAuthenticate {
                 .take(url.len() - TOKEN_ROUTE_LEN)
                 .collect();
             db.first_load = false;
-            let fetch_user_url = format!(
-                "https://api.trello.com/1/members/me/?key={}&token={}",
-                API_KEY, token
-            );
-            let body = reqwest::get(fetch_user_url)
-                .await
-                .ok()
-                .unwrap()
-                .text()
-                .await
-                .ok().unwrap();
-            let user: User = serde_json::from_str(body.as_str()).unwrap();
+            api.auth(token);
+            let user = api.members_me().await.unwrap();
             req.respond(user.username).unwrap();
         }
 

@@ -2,6 +2,7 @@ mod logo;
 mod pages;
 mod router;
 
+use crate::api::Api;
 use crate::database::Database;
 use crate::input::{Event, EventSender};
 use crossterm::{
@@ -36,7 +37,7 @@ pub trait Page {
     fn mount(&mut self, event_sender: EventSender);
     fn unmount(&mut self);
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a>;
-    async fn update(&mut self, event: Event, db: &mut Database) -> Operation;
+    async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation;
 }
 
 type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
@@ -44,6 +45,7 @@ type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
 pub struct UITerminal {
     pub internal: InternalTerminal,
     pub db: Database,
+    pub api: Api,
     pub event_sender: EventSender,
     router: Router,
 }
@@ -52,12 +54,14 @@ impl<'a> UITerminal {
     pub fn new(
         internal: InternalTerminal,
         db: Database,
+        api: Api,
         event_sender: EventSender,
         router: Router,
     ) -> Self {
         Self {
             internal,
             db,
+            api,
             event_sender,
             router,
         }
@@ -95,7 +99,11 @@ impl<'a> DrawCall<'a> {
 
 pub type RenderQueue<'a> = Vec<DrawCall<'a>>;
 
-pub fn init(db: Database, event_sender: EventSender) -> Result<UITerminal, Box<dyn Error>> {
+pub fn init(
+    db: Database,
+    api: Api,
+    event_sender: EventSender,
+) -> Result<UITerminal, Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -108,12 +116,11 @@ pub fn init(db: Database, event_sender: EventSender) -> Result<UITerminal, Box<d
             BrowserAuthenticate::new(),
         )
         .route("/first_load".to_string(), FirstLoad::new());
-    router.navigate(String::from(if db.first_load {
-        "/first_load"
-    } else {
-        "/"
-    }), event_sender.clone());
-    Ok(UITerminal::new(terminal, db, event_sender, router))
+    router.navigate(
+        String::from(if db.first_load { "/first_load" } else { "/" }),
+        event_sender.clone(),
+    );
+    Ok(UITerminal::new(terminal, db, api, event_sender, router))
 }
 
 pub async fn update(terminal: &mut UITerminal, event: Event) -> Result<bool, Box<dyn Error>> {
@@ -121,7 +128,7 @@ pub async fn update(terminal: &mut UITerminal, event: Event) -> Result<bool, Box
         .router
         .current_mut()
         .unwrap()
-        .update(event, &mut terminal.db)
+        .update(event, &mut terminal.db, &mut terminal.api)
         .await
     {
         Operation::Navigate(loc) => {

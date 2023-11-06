@@ -6,6 +6,7 @@ use tui::{
 
 use const_format::formatcp;
 
+use crate::api::Api;
 use crate::database::Database;
 use crate::input::{Event, KeyCode, EventSender};
 use crate::ui::{Operation, Page};
@@ -105,7 +106,7 @@ impl Page for Authenticate {
         ]
     }
 
-    async fn update(&mut self, event: Event, db: &mut Database) -> Operation {
+    async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('1') => Operation::Navigate(String::from("/authenticate/browser")),
