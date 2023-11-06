@@ -9,7 +9,7 @@ use webbrowser;
 
 use crate::database::Database;
 use crate::input::{
-    http_server::{HttpServer, RespondWithHtml},
+    http_server::{HttpServer, Request, RespondWithHtml},
     Event, EventSender, KeyCode,
 };
 use crate::ui::{logo, DrawCall, RenderQueue, UIWidget};
@@ -27,10 +27,22 @@ const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}&return_url=http://127.0.0.1:9999/auth");
 
 use async_trait::async_trait;
+
+fn request_validator(req: Request) -> Option<Request> {
+    let url = req.url();
+    if url.starts_with("/auth") {
+        Some(req)
+    } else if url.starts_with("/token") {
+        Some(req)
+    } else {
+        None
+    }
+}
+
 #[async_trait]
 impl Page for BrowserAuthenticate {
     fn mount(&mut self, event_sender: EventSender) {
-        self.web_server = Some(HttpServer::new(event_sender, "9999", |v| Some(v)));
+        self.web_server = Some(HttpServer::new(event_sender, "9999", request_validator));
         // self.failed_open_browser = !webbrowser::open(AUTH_URL).is_ok();
     }
 
@@ -148,31 +160,7 @@ impl Page for BrowserAuthenticate {
                 },
                 _ => Operation::None,
             },
-            Event::Request(req) => {
-                let url = req.url();
-                let token: &str = "token=";
-                let hash_index = url.find("token=");
-                if hash_index.is_some() {
-                    let token: String = url
-                        .chars()
-                        .skip(hash_index.unwrap_or(0) + token.len())
-                        .take(url.len() - token.len())
-                        .collect();
-                    let fetch_user_url = format!(
-                        "https://api.trello.com/1/members/me/?key={}&token={}",
-                        API_KEY, token
-                    );
-                    let body = reqwest::get(fetch_user_url)
-                        .await
-                        .ok()
-                        .unwrap()
-                        .text()
-                        .await
-                        .ok();
-                    req.respond_with_html("auth_success.html").unwrap();
-                }
-                Operation::None
-            }
+            Event::Request(req) => self.dispatch_request(req).await,
             Event::Tick => Operation::None,
         }
     }
@@ -185,5 +173,38 @@ impl BrowserAuthenticate {
             failed_open_browser: false,
             selected_button: 0,
         }
+    }
+
+    async fn dispatch_request(&self, req: Request) -> Operation {
+        let url = req.url();
+        if url.starts_with("/auth") {
+            req.respond_with_html("auth.html").unwrap();
+        } else if url.starts_with("/token") {
+            req.respond_with_html("auth_success.html").unwrap();
+        }
+
+        // let url = req.url();
+        // let token: &str = "token=";
+        // let hash_index = url.find(token);
+        // if hash_index.is_some() {
+        //     let token: String = url
+        //         .chars()
+        //         .skip(hash_index.unwrap_or(0) + token.len())
+        //         .take(url.len() - token.len())
+        //         .collect();
+        //     let fetch_user_url = format!(
+        //         "https://api.trello.com/1/members/me/?key={}&token={}",
+        //         API_KEY, token
+        //     );
+        //     let body = reqwest::get(fetch_user_url)
+        //         .await
+        //         .ok()
+        //         .unwrap()
+        //         .text()
+        //         .await
+        //         .ok();
+        //     req.respond_with_html("auth_success.html").unwrap();
+        // }
+        Operation::None
     }
 }

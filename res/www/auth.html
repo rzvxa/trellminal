@@ -14,7 +14,7 @@
         params[d(e[1])] = d(e[2]);
       if (params.token !== undefined) {
         var location = window.location
-        location.replace('http://' + location.host + '/token=' + params.token)
+        location.replace('http://' + location.host + '/token/' + params.token)
       } else {
         document.body.innerText = "Something went wrong!" 
       }

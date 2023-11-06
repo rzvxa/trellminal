@@ -4,7 +4,7 @@ use std::{
     io::{prelude::*, BufReader, Error as IoError, ErrorKind},
     net::{TcpListener, TcpStream},
     ops::Drop,
-    sync::mpsc::{self, Sender},
+    sync::mpsc::{self, Receiver, Sender},
     thread,
     time::Duration,
 };
@@ -22,6 +22,10 @@ impl Request {
         return &self.url;
     }
 
+    pub fn url_str(&self) -> &str {
+        return &self.url().as_str();
+    }
+
     pub fn respond(mut self, content: String) -> Result<(), IoError> {
         let status_line = "HTTP/1.1 200 OK";
         let length = content.len();
@@ -37,7 +41,8 @@ pub trait RespondWithHtml {
 
 impl RespondWithHtml for Request {
     fn respond_with_html(self, view_path: &str) -> Result<(), IoError> {
-        let view = fs::read_to_string(view_path)?;
+        let full_path = format!("res/www/{view_path}");
+        let view = fs::read_to_string(full_path)?;
         self.respond(view)
     }
 }
@@ -48,10 +53,9 @@ enum ThreadMessage {
 
 pub struct HttpServer {
     thread_message_broker: Sender<ThreadMessage>,
-    validator: Validator,
 }
 
-fn handle_connection(mut stream: TcpStream) -> Request {
+fn handle_connection(mut stream: TcpStream) -> Option<Request> {
     let buf_reader = BufReader::new(&mut stream);
     let http_request: Vec<_> = buf_reader
         .lines()
@@ -59,45 +63,66 @@ fn handle_connection(mut stream: TcpStream) -> Request {
         .take_while(|line| !line.is_empty())
         .collect();
 
-    println!("Request: {:#?}", http_request);
+    let first_line = match http_request.first() {
+        Some(params) => params,
+        None => "BAD REQUEST",
+    };
 
-    Request {
-        url: "URL".to_string(),
+    let mut params = first_line.split(' ');
+
+    // check if first token is GET as we only process get requests
+    if params.next().unwrap_or("") != "GET" {
+        return None;
+    }
+
+    let url = params.next().unwrap_or("");
+
+    Some(Request {
+        url: url.to_string(),
         stream,
+    })
+}
+
+fn background_worker(
+    socket: TcpListener,
+    event_sender: EventSender,
+    event_receiver: Receiver<ThreadMessage>,
+    validator: Validator,
+) {
+    let tick_rate = Duration::from_millis(200);
+    for stream in socket.incoming() {
+        match stream {
+            Ok(s) => match handle_connection(s) {
+                Some(req) => {
+                    if let Some(req) = validator(req) {
+                        event_sender.send(Event::Request(req)).unwrap();
+                    }
+                }
+                None => {}
+            },
+            Err(ref e) if e.kind() == ErrorKind::WouldBlock => match event_receiver.try_recv().ok()
+            {
+                Some(msg) => match msg {
+                    ThreadMessage::Terminate => {
+                        break;
+                    }
+                },
+                None => {}
+            },
+            Err(e) => panic!("encountered IO error: {}", e),
+        }
+        thread::sleep(tick_rate);
     }
 }
 
 impl HttpServer {
     pub fn new(event_sender: EventSender, port: Port, validator: Validator) -> Self {
         let (tx, rx) = mpsc::channel();
-        let tick_rate = Duration::from_millis(200);
-        let server = TcpListener::bind(format!("0.0.0.0:{port}")).unwrap();
-        server.set_nonblocking(true).unwrap();
-        thread::spawn(move || {
-            for stream in server.incoming() {
-                match stream {
-                    Ok(s) => {
-                        let req = handle_connection(s);
-                        if let Some(req) = validator(req) {
-                            event_sender.send(Event::Request(req)).unwrap();
-                        }
-                    }
-                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => match rx.try_recv().ok() {
-                        Some(msg) => match msg {
-                            ThreadMessage::Terminate => {
-                                break;
-                            }
-                        },
-                        None => {}
-                    },
-                    Err(e) => panic!("encountered IO error: {}", e),
-                }
-                thread::sleep(tick_rate);
-            }
-        });
+        let socket = TcpListener::bind(format!("0.0.0.0:{port}")).unwrap();
+        socket.set_nonblocking(true).unwrap();
+        thread::spawn(move || background_worker(socket, event_sender, rx, validator));
         Self {
             thread_message_broker: tx,
-            validator,
         }
     }
 }
