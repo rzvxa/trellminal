@@ -10,8 +10,7 @@ use webbrowser;
 use crate::database::Database;
 use crate::input::{
     http_server::{HttpServer, RespondWithHtml},
-    Event, KeyCode,
-    EventSender,
+    Event, EventSender, KeyCode,
 };
 use crate::ui::{logo, DrawCall, RenderQueue, UIWidget};
 use crate::ui::{Operation, Page};
@@ -31,7 +30,7 @@ use async_trait::async_trait;
 #[async_trait]
 impl Page for BrowserAuthenticate {
     fn mount(&mut self, event_sender: EventSender) {
-        self.web_server = Some(HttpServer::new(event_sender, "9999"));
+        self.web_server = Some(HttpServer::new(event_sender, "9999", |v| Some(v)));
         // self.failed_open_browser = !webbrowser::open(AUTH_URL).is_ok();
     }
 

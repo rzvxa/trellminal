@@ -1,7 +1,7 @@
 use super::{Event, EventSender};
 use std::{
     fs,
-    io::{ErrorKind, prelude::*, BufReader, Error as IoError},
+    io::{prelude::*, BufReader, Error as IoError, ErrorKind},
     net::{TcpListener, TcpStream},
     ops::Drop,
     sync::mpsc::{self, Sender},
@@ -10,6 +10,7 @@ use std::{
 };
 
 pub type Port = &'static str;
+pub type Validator = fn(Request) -> Option<Request>;
 
 pub struct Request {
     url: String,
@@ -18,7 +19,7 @@ pub struct Request {
 
 impl Request {
     pub fn url(&self) -> &String {
-        return &self.url
+        return &self.url;
     }
 
     pub fn respond(mut self, content: String) -> Result<(), IoError> {
@@ -47,6 +48,7 @@ enum ThreadMessage {
 
 pub struct HttpServer {
     thread_message_broker: Sender<ThreadMessage>,
+    validator: Validator,
 }
 
 fn handle_connection(mut stream: TcpStream) -> Request {
@@ -59,51 +61,51 @@ fn handle_connection(mut stream: TcpStream) -> Request {
 
     println!("Request: {:#?}", http_request);
 
-    Request { url: "URL".to_string(), stream }
+    Request {
+        url: "URL".to_string(),
+        stream,
+    }
 }
 
 impl HttpServer {
-    pub fn new(event_sender: EventSender, port: Port) -> Self {
+    pub fn new(event_sender: EventSender, port: Port, validator: Validator) -> Self {
         let (tx, rx) = mpsc::channel();
         let tick_rate = Duration::from_millis(200);
         let server = TcpListener::bind(format!("0.0.0.0:{port}")).unwrap();
         server.set_nonblocking(true).unwrap();
         thread::spawn(move || {
             for stream in server.incoming() {
-                println!("loop|");
                 match stream {
                     Ok(s) => {
                         let req = handle_connection(s);
-                        event_sender.send(Event::Request(req)).unwrap();
-                    }
-                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => {
-                        match rx.try_recv().ok() {
-                            Some(msg) => match msg {
-                                ThreadMessage::Terminate => {
-                                    break;
-                                }
-                            },
-                            None => {}
+                        if let Some(req) = validator(req) {
+                            event_sender.send(Event::Request(req)).unwrap();
                         }
                     }
+                    Err(ref e) if e.kind() == ErrorKind::WouldBlock => match rx.try_recv().ok() {
+                        Some(msg) => match msg {
+                            ThreadMessage::Terminate => {
+                                break;
+                            }
+                        },
+                        None => {}
+                    },
                     Err(e) => panic!("encountered IO error: {}", e),
                 }
                 thread::sleep(tick_rate);
             }
-            println!("End")
         });
         Self {
             thread_message_broker: tx,
+            validator,
         }
     }
 }
 
 impl Drop for HttpServer {
     fn drop(&mut self) {
-        println!("MIC DROP");
         self.thread_message_broker
             .send(ThreadMessage::Terminate)
             .unwrap_or(());
-        println!("SENTTT");
     }
 }
