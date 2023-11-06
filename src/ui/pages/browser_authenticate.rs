@@ -27,12 +27,15 @@ const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}&return_url=http://127.0.0.1:9999/auth");
 
 use async_trait::async_trait;
+const AUTH_ROUTE: &str = "/auth";
+const TOKEN_ROUTE: &str = "/token/";
+const TOKEN_ROUTE_LEN: usize = TOKEN_ROUTE.len();
 
 fn request_validator(req: Request) -> Option<Request> {
     let url = req.url();
-    if url.starts_with("/auth") {
+    if url.starts_with(AUTH_ROUTE) {
         Some(req)
-    } else if url.starts_with("/token") {
+    } else if url.starts_with(TOKEN_ROUTE) {
         Some(req)
     } else {
         None
@@ -179,32 +182,15 @@ impl BrowserAuthenticate {
         let url = req.url();
         if url.starts_with("/auth") {
             req.respond_with_html("auth.html").unwrap();
-        } else if url.starts_with("/token") {
-            req.respond_with_html("auth_success.html").unwrap();
+        } else if url.starts_with(TOKEN_ROUTE) {
+            let token: String = url
+                .chars()
+                .skip(TOKEN_ROUTE_LEN)
+                .take(url.len() - TOKEN_ROUTE_LEN)
+                .collect();
+            req.respond(token).unwrap();
         }
 
-        // let url = req.url();
-        // let token: &str = "token=";
-        // let hash_index = url.find(token);
-        // if hash_index.is_some() {
-        //     let token: String = url
-        //         .chars()
-        //         .skip(hash_index.unwrap_or(0) + token.len())
-        //         .take(url.len() - token.len())
-        //         .collect();
-        //     let fetch_user_url = format!(
-        //         "https://api.trello.com/1/members/me/?key={}&token={}",
-        //         API_KEY, token
-        //     );
-        //     let body = reqwest::get(fetch_user_url)
-        //         .await
-        //         .ok()
-        //         .unwrap()
-        //         .text()
-        //         .await
-        //         .ok();
-        //     req.respond_with_html("auth_success.html").unwrap();
-        // }
         Operation::None
     }
 }
