@@ -3,8 +3,7 @@ mod pages;
 mod router;
 
 use crate::database::Database;
-use crate::input::{Event, KeyEvent};
-use crate::state::State;
+use crate::input::{Event, EventSender};
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
@@ -34,10 +33,10 @@ pub enum Operation {
 
 #[async_trait]
 pub trait Page {
-    fn mount(&mut self);
+    fn mount(&mut self, event_sender: EventSender);
     fn unmount(&mut self);
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a>;
-    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Operation;
+    async fn update(&mut self, event: Event, db: &mut Database) -> Operation;
 }
 
 type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
@@ -45,16 +44,21 @@ type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
 pub struct UITerminal {
     pub internal: InternalTerminal,
     pub db: Database,
-    pub state: State,
+    pub event_sender: EventSender,
     router: Router,
 }
 
 impl<'a> UITerminal {
-    pub fn new(internal: InternalTerminal, db: Database, state: State, router: Router) -> Self {
+    pub fn new(
+        internal: InternalTerminal,
+        db: Database,
+        event_sender: EventSender,
+        router: Router,
+    ) -> Self {
         Self {
             internal,
             db,
-            state,
+            event_sender,
             router,
         }
     }
@@ -91,7 +95,7 @@ impl<'a> DrawCall<'a> {
 
 pub type RenderQueue<'a> = Vec<DrawCall<'a>>;
 
-pub fn init(db: Database, state: State) -> Result<UITerminal, Box<dyn Error>> {
+pub fn init(db: Database, event_sender: EventSender) -> Result<UITerminal, Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -108,14 +112,11 @@ pub fn init(db: Database, state: State) -> Result<UITerminal, Box<dyn Error>> {
         "/first_load"
     } else {
         "/"
-    }));
-    Ok(UITerminal::new(terminal, db, state, router))
+    }), event_sender.clone());
+    Ok(UITerminal::new(terminal, db, event_sender, router))
 }
 
-pub async fn update(
-    terminal: &mut UITerminal,
-    event: Event<KeyEvent>,
-) -> Result<bool, Box<dyn Error>> {
+pub async fn update(terminal: &mut UITerminal, event: Event) -> Result<bool, Box<dyn Error>> {
     match terminal
         .router
         .current_mut()
@@ -124,7 +125,7 @@ pub async fn update(
         .await
     {
         Operation::Navigate(loc) => {
-            terminal.router.navigate(loc);
+            terminal.router.navigate(loc, terminal.event_sender.clone());
             Ok(true)
         }
         Operation::Exit => Ok(false),

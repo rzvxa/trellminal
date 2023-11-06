@@ -7,7 +7,7 @@ use tui::{
 use const_format::formatcp;
 
 use crate::database::Database;
-use crate::input::{Event, KeyCode, KeyEvent, RespondWithPage};
+use crate::input::{Event, KeyCode, EventSender};
 use crate::ui::{Operation, Page};
 use crate::ui::{logo, DrawCall, RenderQueue, UIWidget};
 
@@ -23,7 +23,7 @@ const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Authenticate {
-    fn mount(&mut self) {}
+    fn mount(&mut self, event_sender: EventSender) {}
 
     fn unmount(&mut self) {}
 
@@ -105,7 +105,7 @@ impl Page for Authenticate {
         ]
     }
 
-    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Operation {
+    async fn update(&mut self, event: Event, db: &mut Database) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('1') => Operation::Navigate(String::from("/authenticate/browser")),
@@ -133,32 +133,32 @@ impl Page for Authenticate {
                 },
                 _ => Operation::None,
             },
-            Event::Request(req) => {
-                let url = req.url();
-                let token: &str = "token=";
-                let hash_index = url.find("token=");
-                if hash_index.is_some() {
-                    let token: String = url
-                        .chars()
-                        .skip(hash_index.unwrap_or(0) + token.len())
-                        .take(url.len() - token.len())
-                        .collect();
-                    let fetch_user_url = format!(
-                        "https://api.trello.com/1/members/me/?key={}&token={}",
-                        API_KEY, token
-                    );
-                    let body = reqwest::get(fetch_user_url)
-                        .await
-                        .ok()
-                        .unwrap()
-                        .text()
-                        .await
-                        .ok();
-                    req.respond_with_view("auth_success.html").unwrap();
-                }
-                Operation::None
-            }
-            Event::Tick => Operation::None,
+            // Event::Request(req) => {
+            //     let url = req.url();
+            //     let token: &str = "token=";
+            //     let hash_index = url.find("token=");
+            //     if hash_index.is_some() {
+            //         let token: String = url
+            //             .chars()
+            //             .skip(hash_index.unwrap_or(0) + token.len())
+            //             .take(url.len() - token.len())
+            //             .collect();
+            //         let fetch_user_url = format!(
+            //             "https://api.trello.com/1/members/me/?key={}&token={}",
+            //             API_KEY, token
+            //         );
+            //         let body = reqwest::get(fetch_user_url)
+            //             .await
+            //             .ok()
+            //             .unwrap()
+            //             .text()
+            //             .await
+            //             .ok();
+            //         req.respond_with_view("auth_success.html").unwrap();
+            //     }
+            //     Operation::None
+            // }
+            _ => Operation::None,
         }
     }
 }

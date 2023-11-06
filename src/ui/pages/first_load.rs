@@ -5,7 +5,7 @@ use tui::{
 };
 
 use crate::database::Database;
-use crate::input::{Event, KeyCode, KeyEvent};
+use crate::input::{Event, KeyCode, EventSender};
 use crate::ui::{DrawCall, RenderQueue, UIWidget};
 use crate::ui::{Operation, Page};
 
@@ -21,7 +21,7 @@ pub struct FirstLoad {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for FirstLoad {
-    fn mount(&mut self) {}
+    fn mount(&mut self, event_sender: EventSender) {}
 
     fn unmount(&mut self) {}
 
@@ -87,7 +87,7 @@ impl Page for FirstLoad {
         ]
     }
 
-    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Operation {
+    async fn update(&mut self, event: Event, db: &mut Database) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => Operation::Exit,

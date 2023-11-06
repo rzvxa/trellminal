@@ -8,11 +8,16 @@ use const_format::formatcp;
 use webbrowser;
 
 use crate::database::Database;
-use crate::input::{Event, KeyEvent, KeyCode, RespondWithPage};
-use crate::ui::{Page, Operation};
-use crate::ui::{DrawCall, RenderQueue, UIWidget, logo};
+use crate::input::{
+    http_server::{HttpServer, RespondWithHtml},
+    Event, KeyCode,
+    EventSender,
+};
+use crate::ui::{logo, DrawCall, RenderQueue, UIWidget};
+use crate::ui::{Operation, Page};
 
 pub struct BrowserAuthenticate {
+    web_server: Option<HttpServer>,
     failed_open_browser: bool,
     selected_button: u8,
 }
@@ -25,14 +30,21 @@ const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day
 use async_trait::async_trait;
 #[async_trait]
 impl Page for BrowserAuthenticate {
-    fn mount(&mut self) {
-        self.failed_open_browser = !webbrowser::open(AUTH_URL).is_ok();
+    fn mount(&mut self, event_sender: EventSender) {
+        self.web_server = Some(HttpServer::new(event_sender, "9999"));
+        // self.failed_open_browser = !webbrowser::open(AUTH_URL).is_ok();
     }
 
-    fn unmount(&mut self) { }
+    fn unmount(&mut self) {
+        if self.web_server.is_some() {
+            self.web_server = None;
+        }
+    }
 
     fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
-        let block = Block::default().title("Authenticate using a browser").borders(Borders::ALL);
+        let block = Block::default()
+            .title("Authenticate using a browser")
+            .borders(Borders::ALL);
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -109,7 +121,7 @@ impl Page for BrowserAuthenticate {
         ]
     }
 
-    async fn update(&mut self, event: Event<KeyEvent>, db: &mut Database) -> Operation {
+    async fn update(&mut self, event: Event, db: &mut Database) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('1') => Operation::Navigate(String::from("/authenticate")),
@@ -117,25 +129,23 @@ impl Page for BrowserAuthenticate {
                 KeyCode::Char('j') => {
                     self.selected_button = 1;
                     Operation::None
-                },
+                }
                 KeyCode::Char('k') => {
                     self.selected_button = 0;
                     Operation::None
-                },
+                }
                 KeyCode::Down => {
                     self.selected_button = 1;
                     Operation::None
-                },
+                }
                 KeyCode::Up => {
                     self.selected_button = 0;
                     Operation::None
-                },
-                KeyCode::Enter => {
-                    match self.selected_button {
-                        0 => Operation::Navigate(String::from("/authenticate")),
-                        1 => Operation::Navigate(String::from("/exit")),
-                        _ => Operation::None,
-                    }
+                }
+                KeyCode::Enter => match self.selected_button {
+                    0 => Operation::Navigate(String::from("/authenticate")),
+                    1 => Operation::Navigate(String::from("/exit")),
+                    _ => Operation::None,
                 },
                 _ => Operation::None,
             },
@@ -160,7 +170,7 @@ impl Page for BrowserAuthenticate {
                         .text()
                         .await
                         .ok();
-                    req.respond_with_view("auth_success.html").unwrap();
+                    req.respond_with_html("auth_success.html").unwrap();
                 }
                 Operation::None
             }
@@ -171,6 +181,10 @@ impl Page for BrowserAuthenticate {
 
 impl BrowserAuthenticate {
     pub fn new() -> Self {
-        Self { failed_open_browser: false, selected_button: 0 }
+        Self {
+            web_server: None,
+            failed_open_browser: false,
+            selected_button: 0,
+        }
     }
 }

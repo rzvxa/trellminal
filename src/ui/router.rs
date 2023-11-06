@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use super::Page;
+use crate::input::EventSender;
 
 
 pub struct Router {
@@ -28,14 +29,14 @@ impl Router {
         self
     }
 
-    pub fn navigate(&mut self, location: String) {
+    pub fn navigate(&mut self, location: String, event_sender: EventSender) {
         match self.current_mut() {
             Some(cur) => cur.unmount(),
             _ => {}
         }
         self.location = location;
         match self.current_mut() {
-            Some(cur) => cur.mount(),
+            Some(cur) => cur.mount(event_sender),
             _ => {}
         }
     }

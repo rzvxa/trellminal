@@ -2,20 +2,16 @@ use std::error::Error;
 
 mod database;
 mod input;
-mod state;
 mod ui;
-
-use state::State;
 
 const DATABASE_PATH: &str = "~/.trellminaldb";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let db = database::load_database(DATABASE_PATH);
-    let state = State::new();
 
-    let event_receiver = input::init();
-    let mut terminal = ui::init(db, state).unwrap();
+    let (event_sender, event_receiver) = input::init();
+    let mut terminal = ui::init(db, event_sender).unwrap();
 
     loop {
         let event = event_receiver.recv().unwrap();

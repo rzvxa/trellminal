@@ -1,36 +1,30 @@
-use std::{thread, sync::mpsc::{self, Receiver}, time::{Duration, Instant}, io::Error as IoError};
-use crossterm::event::{self, Event as CEvent, KeyEventKind};
+pub mod http_server;
 
-use tiny_http::{Server, Response};
-pub use tiny_http::Request;
+use crossterm::event::{self, Event as CEvent, KeyEventKind};
+use std::{
+    sync::mpsc::{self, Receiver, Sender},
+    thread,
+    time::{Duration, Instant},
+};
+
+pub use http_server::Request;
 
 pub use crossterm::event::KeyCode;
 pub use crossterm::event::KeyEvent;
 
-pub type EventReceiver = Receiver<Event<KeyEvent>>;
+pub type EventSender = Sender<Event>;
+pub type EventReceiver = Receiver<Event>;
 
-pub enum Event<T> {
-    Input(T),
+pub enum Event {
+    Input(KeyEvent),
     Request(Request),
     Tick,
 }
 
-pub trait RespondWithPage {
-    fn respond_with_view(self, view_path: &str) -> Result<(), IoError>;
-}
-
-impl RespondWithPage for Request {
-    fn respond_with_view(self, view_path: &str) -> Result<(), IoError> {
-        let auth_view = std::fs::File::open(format!("res/www/{view_path}")).unwrap();
-        let response = Response::from_file(auth_view);
-        self.respond(response)
-    }
-}
-
-pub fn init() -> EventReceiver {
+pub fn init() -> (EventSender, EventReceiver) {
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);
-    let tx_server = tx.clone();
+    let input_tx = tx.clone();
     thread::spawn(move || {
         let mut last_tick = Instant::now();
         loop {
@@ -39,32 +33,20 @@ pub fn init() -> EventReceiver {
                 .unwrap_or_else(|| Duration::from_secs(0));
 
             if event::poll(timeout).expect("poll works") {
-                if let CEvent::Key(key) = event::read().expect("can read events"){
+                if let CEvent::Key(key) = event::read().expect("can read events") {
                     if key.kind == KeyEventKind::Press {
-                        tx.send(Event::Input(key)).expect("can send events");
+                        input_tx.send(Event::Input(key)).expect("can send events");
                     }
                 }
             }
 
             if last_tick.elapsed() >= tick_rate {
-                if let Ok(_) = tx.send(Event::Tick) {
+                if let Ok(_) = input_tx.send(Event::Tick) {
                     last_tick = Instant::now();
                 }
             }
         }
     });
 
-    let server = Server::http("0.0.0.0:9999").unwrap();
-    thread::spawn(move || {
-        for req in server.incoming_requests() {
-            match req.url() {
-                "/auth" | "/auth/" => {
-                    req.respond_with_view("auth.html").unwrap();
-                },
-                _ => tx_server.send(Event::Request(req)).expect("request propagated"),
-            }
-        }
-    });
-
-    return rx;
+    return (tx, rx);
 }
