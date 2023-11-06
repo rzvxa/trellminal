@@ -1,5 +1,6 @@
 use super::{Event, EventSender};
 use std::{
+    fs,
     io::{ErrorKind, prelude::*, BufReader, Error as IoError},
     net::{TcpListener, TcpStream},
     ops::Drop,
@@ -12,11 +13,20 @@ pub type Port = &'static str;
 
 pub struct Request {
     url: String,
+    stream: TcpStream,
 }
 
 impl Request {
     pub fn url(&self) -> &String {
         return &self.url
+    }
+
+    pub fn respond(mut self, content: String) -> Result<(), IoError> {
+        let status_line = "HTTP/1.1 200 OK";
+        let length = content.len();
+        let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{content}");
+
+        return self.stream.write_all(response.as_bytes());
     }
 }
 
@@ -26,10 +36,8 @@ pub trait RespondWithHtml {
 
 impl RespondWithHtml for Request {
     fn respond_with_html(self, view_path: &str) -> Result<(), IoError> {
-        Ok(())
-        // let auth_view = std::fs::File::open(format!("res/www/{view_path}")).unwrap();
-        // let response = Response::from_file(auth_view);
-        // self.respond(response)
+        let view = fs::read_to_string(view_path)?;
+        self.respond(view)
     }
 }
 
@@ -49,11 +57,9 @@ fn handle_connection(mut stream: TcpStream) -> Request {
         .take_while(|line| !line.is_empty())
         .collect();
 
-    let response = "HTTP/1.1 200 OK\r\n\r\n";
     println!("Request: {:#?}", http_request);
 
-    stream.write_all(response.as_bytes()).unwrap();
-    Request { url: "URL".to_string() }
+    Request { url: "URL".to_string(), stream }
 }
 
 impl HttpServer {
