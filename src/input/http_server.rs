@@ -10,7 +10,7 @@ use std::{
 };
 
 pub type Port = &'static str;
-pub type Validator = fn(Request) -> Option<Request>;
+pub type Validator = fn(&Request) -> bool;
 
 pub struct Request {
     url: String,
@@ -20,10 +20,6 @@ pub struct Request {
 impl Request {
     pub fn url(&self) -> &String {
         return &self.url;
-    }
-
-    pub fn url_str(&self) -> &str {
-        return &self.url().as_str();
     }
 
     pub fn respond(mut self, content: String) -> Result<(), IoError> {
@@ -94,8 +90,10 @@ fn background_worker(
         match stream {
             Ok(s) => match handle_connection(s) {
                 Some(req) => {
-                    if let Some(req) = validator(req) {
+                    if validator(&req) {
                         event_sender.send(Event::Request(req)).unwrap();
+                    } else {
+                        req.respond_with_html("404.html").unwrap();
                     }
                 }
                 None => {}

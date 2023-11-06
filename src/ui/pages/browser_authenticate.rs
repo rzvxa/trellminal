@@ -31,14 +31,14 @@ const AUTH_ROUTE: &str = "/auth";
 const TOKEN_ROUTE: &str = "/token/";
 const TOKEN_ROUTE_LEN: usize = TOKEN_ROUTE.len();
 
-fn request_validator(req: Request) -> Option<Request> {
+fn request_validator(req: &Request) -> bool {
     let url = req.url();
     if url.starts_with(AUTH_ROUTE) {
-        Some(req)
+        true
     } else if url.starts_with(TOKEN_ROUTE) {
-        Some(req)
+        true
     } else {
-        None
+        false
     }
 }
 
