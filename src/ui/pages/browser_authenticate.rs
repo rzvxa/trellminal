@@ -4,9 +4,11 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
+use serde_json;
 use const_format::formatcp;
 use webbrowser;
 
+use crate::models::User;
 use crate::database::Database;
 use crate::input::{
     http_server::{HttpServer, Request, RespondWithHtml},
@@ -46,7 +48,7 @@ fn request_validator(req: &Request) -> bool {
 impl Page for BrowserAuthenticate {
     fn mount(&mut self, event_sender: EventSender) {
         self.web_server = Some(HttpServer::new(event_sender, "9999", request_validator));
-        // self.failed_open_browser = !webbrowser::open(AUTH_URL).is_ok();
+        self.failed_open_browser = !webbrowser::open(AUTH_URL).is_ok();
     }
 
     fn unmount(&mut self) {
@@ -163,7 +165,7 @@ impl Page for BrowserAuthenticate {
                 },
                 _ => Operation::None,
             },
-            Event::Request(req) => self.dispatch_request(req).await,
+            Event::Request(req) => self.dispatch_request(req, db).await,
             Event::Tick => Operation::None,
         }
     }
@@ -178,7 +180,7 @@ impl BrowserAuthenticate {
         }
     }
 
-    async fn dispatch_request(&self, req: Request) -> Operation {
+    async fn dispatch_request(&self, req: Request, db: &mut Database) -> Operation {
         let url = req.url();
         if url.starts_with("/auth") {
             req.respond_with_html("auth.html").unwrap();
@@ -188,7 +190,20 @@ impl BrowserAuthenticate {
                 .skip(TOKEN_ROUTE_LEN)
                 .take(url.len() - TOKEN_ROUTE_LEN)
                 .collect();
-            req.respond(token).unwrap();
+            db.first_load = false;
+            let fetch_user_url = format!(
+                "https://api.trello.com/1/members/me/?key={}&token={}",
+                API_KEY, token
+            );
+            let body = reqwest::get(fetch_user_url)
+                .await
+                .ok()
+                .unwrap()
+                .text()
+                .await
+                .ok().unwrap();
+            let user: User = serde_json::from_str(body.as_str()).unwrap();
+            req.respond(user.username).unwrap();
         }
 
         Operation::None

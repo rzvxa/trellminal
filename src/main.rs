@@ -1,6 +1,7 @@
 use std::error::Error;
 
 mod database;
+mod models;
 mod input;
 mod ui;
 
