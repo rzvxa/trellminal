@@ -22,6 +22,8 @@ pub struct ManualAuthenticate {
     show_qr_code: bool,
     qr_black_on_white: bool,
     qr_selected_button: u8,
+    show_enter_token_dialog: bool,
+    enter_token_selected_button: u8,
 }
 
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}");
@@ -132,19 +134,32 @@ impl Page for ManualAuthenticate {
             DrawCall::new(UIWidget::Paragraph(btn_iter.next().unwrap()), btn_layout[4]),
         ];
 
-        if self.show_qr_code {
+        if self.show_enter_token_dialog {
+            let layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Length(8), Constraint::Min(1)])
+                .split(center_layout[0]);
+            draw_calls.extend(self.show_enter_token_dialog(layout[0]));
+        } else if self.show_qr_code {
             draw_calls.extend(self.show_qr_code(rect));
         }
         draw_calls
     }
 
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
-        if self.show_qr_code {
+        if self.show_enter_token_dialog {
+            self.enter_token_dialog_update(event);
+            Operation::None
+        } else if self.show_qr_code {
             self.qr_code_dialog_update(event);
             Operation::None
         } else {
             match event {
                 Event::Input(event) => match event.code {
+                    KeyCode::Char('e') => {
+                        self.show_enter_token_dialog = true;
+                        Operation::None
+                    }
                     KeyCode::Char('c') => {
                         self.show_qr_code = true;
                         Operation::None
@@ -160,7 +175,10 @@ impl Page for ManualAuthenticate {
                         Operation::None
                     }
                     KeyCode::Enter => match self.selected_button {
-                        0 => Operation::Navigate(String::from("/authenticate")),
+                        0 => {
+                            self.show_enter_token_dialog = true;
+                            Operation::None
+                        }
                         1 => {
                             self.show_qr_code = true;
                             Operation::None
@@ -184,6 +202,8 @@ impl ManualAuthenticate {
             show_qr_code: false,
             qr_black_on_white: true,
             qr_selected_button: 0,
+            show_enter_token_dialog: false,
+            enter_token_selected_button: 1,
         }
     }
 
@@ -255,9 +275,6 @@ impl ManualAuthenticate {
         let qr = Paragraph::new(qr_display)
             .alignment(Alignment::Center)
             .wrap(Wrap { trim: can_view_qr });
-        let toggle_btn = Paragraph::new("<[T]oggle colors>")
-            .style(Style::default().fg(Color::Yellow))
-            .alignment(Alignment::Right);
         let mut btns = [
             (0, Paragraph::new("<O[k]>").alignment(Alignment::Left)),
             (
@@ -280,6 +297,44 @@ impl ManualAuthenticate {
             DrawCall::new(UIWidget::Paragraph(btns.next().unwrap()), btn_layout[0]),
             DrawCall::new(UIWidget::Paragraph(btns.next().unwrap()), btn_layout[2]),
         ]
+    }
+
+    fn show_enter_token_dialog<'a>(&self, rect: Rect) -> RenderQueue<'a> {
+        let block = Block::default()
+            .title("Enter your token")
+            .borders(Borders::ALL);
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .margin(1)
+            .constraints([Constraint::Min(1), Constraint::Length(1)])
+            .split(rect);
+
+        let btn_line = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(33),
+                Constraint::Percentage(33),
+                Constraint::Percentage(33),
+            ])
+            .split(layout[1]);
+        let enter_btn = Paragraph::new("<Enter>")
+            .alignment(Alignment::Center)
+            .style(Style::default().fg(Color::Yellow));
+        vec![
+            DrawCall::new(UIWidget::Clear, rect),
+            DrawCall::new(UIWidget::Block(block), rect),
+            DrawCall::new(UIWidget::Paragraph(enter_btn), btn_line[1]),
+        ]
+    }
+
+    fn enter_token_dialog_update(&mut self, event: Event) {
+        match event {
+            Event::Input(event) => match event.code {
+                KeyCode::Enter => self.show_enter_token_dialog = false,
+                _ => {}
+            },
+            _ => {}
+        }
     }
 
     fn qr_code_dialog_update(&mut self, event: Event) {
