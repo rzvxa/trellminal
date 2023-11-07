@@ -6,7 +6,7 @@ use tui::{
 
 use crate::api::{members::Members, Api};
 use crate::{API_KEY, APP_NAME};
-use qrcode::{QrCode, EcLevel, Version};
+use qrcode::{EcLevel, QrCode, Version};
 
 use const_format::formatcp;
 
@@ -21,6 +21,7 @@ pub struct ManualAuthenticate {
     selected_button: u8,
     show_qr_code: bool,
     qr_black_on_white: bool,
+    qr_selected_button: u8,
 }
 
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}");
@@ -150,19 +151,11 @@ impl Page for ManualAuthenticate {
                     }
                     KeyCode::Char('a') => Operation::Navigate(String::from("/authenticate")),
                     KeyCode::Char('q') => Operation::Exit,
-                    KeyCode::Char('j') => {
+                    KeyCode::Down | KeyCode::Char('j') => {
                         self.menu_down();
                         Operation::None
                     }
-                    KeyCode::Char('k') => {
-                        self.menu_up();
-                        Operation::None
-                    }
-                    KeyCode::Down => {
-                        self.menu_down();
-                        Operation::None
-                    }
-                    KeyCode::Up => {
+                    KeyCode::Up | KeyCode::Char('k') => {
                         self.menu_up();
                         Operation::None
                     }
@@ -190,6 +183,7 @@ impl ManualAuthenticate {
             selected_button: 0,
             show_qr_code: false,
             qr_black_on_white: true,
+            qr_selected_button: 0,
         }
     }
 
@@ -211,10 +205,7 @@ impl ManualAuthenticate {
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
-            .constraints([
-                Constraint::Min(30),
-                Constraint::Length(1),
-            ])
+            .constraints([Constraint::Min(30), Constraint::Length(1)])
             .split(rect);
 
         let btn_line = Layout::default()
@@ -244,7 +235,12 @@ impl ManualAuthenticate {
         };
 
         let qr_code = QrCode::with_version(AUTH_URL, Version::Normal(7), EcLevel::L).unwrap();
-        let qr_string = qr_code.render(). light_color(colors.0).dark_color(colors.1).quiet_zone(true).build();
+        let qr_string = qr_code
+            .render()
+            .light_color(colors.0)
+            .dark_color(colors.1)
+            .quiet_zone(true)
+            .build();
         let mut can_view_qr = true;
         let qr_display = if qr_string.lines().count() - 3 > layout[0].height.into() {
             can_view_qr = false;
@@ -253,28 +249,49 @@ impl ManualAuthenticate {
             qr_string
         };
 
-        let block = Block::default().title(format!("QR code for {}", qr_mode)).borders(Borders::ALL);
-        let qr = Paragraph::new(qr_display).alignment(Alignment::Center).wrap(Wrap { trim: can_view_qr });
-        let ok_btn = Paragraph::new("<O[k]>").style(Style::default().fg(Color::Yellow)).alignment(Alignment::Left);
-        let toggle_btn = Paragraph::new("<[T]oggle colors>").style(Style::default().fg(Color::Yellow)).alignment(Alignment::Right);
+        let block = Block::default()
+            .title(format!("QR code for {}", qr_mode))
+            .borders(Borders::ALL);
+        let qr = Paragraph::new(qr_display)
+            .alignment(Alignment::Center)
+            .wrap(Wrap { trim: can_view_qr });
+        let toggle_btn = Paragraph::new("<[T]oggle colors>")
+            .style(Style::default().fg(Color::Yellow))
+            .alignment(Alignment::Right);
+        let mut btns = [
+            (0, Paragraph::new("<O[k]>").alignment(Alignment::Left)),
+            (
+                1,
+                Paragraph::new("<[T]oggle colors>").alignment(Alignment::Right),
+            ),
+        ]
+        .map(|btn| {
+            if btn.0 == self.qr_selected_button {
+                btn.1.style(Style::default().fg(Color::Yellow))
+            } else {
+                btn.1
+            }
+        })
+        .into_iter();
         vec![
             DrawCall::new(UIWidget::Clear, rect),
             DrawCall::new(UIWidget::Block(block), rect),
             DrawCall::new(UIWidget::Paragraph(qr), layout[0]),
-            DrawCall::new(UIWidget::Paragraph(ok_btn), btn_layout[0]),
-            DrawCall::new(UIWidget::Paragraph(toggle_btn), btn_layout[2]),
+            DrawCall::new(UIWidget::Paragraph(btns.next().unwrap()), btn_layout[0]),
+            DrawCall::new(UIWidget::Paragraph(btns.next().unwrap()), btn_layout[2]),
         ]
     }
 
     fn qr_code_dialog_update(&mut self, event: Event) {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('k') | KeyCode::Enter => {
-                    self.show_qr_code = false;
-                }
+                KeyCode::Char('k') | KeyCode::Enter => self.show_qr_code = false,
                 KeyCode::Char('t') | KeyCode::Char('T') => {
-                    self.qr_black_on_white = !self.qr_black_on_white;
+                    self.qr_black_on_white = !self.qr_black_on_white
                 }
+                KeyCode::Left | KeyCode::Char('h') => self.qr_selected_button = 0,
+                KeyCode::Right | KeyCode::Char('l') => self.qr_selected_button = 1,
+
                 _ => {}
             },
             _ => {}
