@@ -20,7 +20,7 @@ use tui::{
 
 use pages::{
     authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
-    home::Home,
+    home::Home, manual_authenticate::ManualAuthenticate,
 };
 
 use async_trait::async_trait;
@@ -83,7 +83,7 @@ enum UIWidget<'a> {
     BarChart(BarChart<'a>),
     Gauge(Gauge<'a>),
     Sparkline(Sparkline<'a>),
-    Clear(Clear),
+    Clear,
 }
 
 pub struct DrawCall<'a> {
@@ -116,6 +116,10 @@ pub fn init(
         .route(
             "/authenticate/browser".to_string(),
             BrowserAuthenticate::new(),
+        )
+        .route(
+            "/authenticate/manual".to_string(),
+            ManualAuthenticate::new(),
         )
         .route("/".to_string(), Home::new());
     router.navigate(
@@ -158,7 +162,7 @@ pub fn draw(terminal: &mut UITerminal) -> Result<(), Box<dyn Error>> {
                 UIWidget::BarChart(widget) => frame.render_widget(widget, w.rect),
                 UIWidget::Gauge(widget) => frame.render_widget(widget, w.rect),
                 UIWidget::Sparkline(widget) => frame.render_widget(widget, w.rect),
-                UIWidget::Clear(widget) => frame.render_widget(widget, w.rect),
+                UIWidget::Clear => frame.render_widget(Clear, w.rect),
             };
         });
     })?;

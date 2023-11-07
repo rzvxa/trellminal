@@ -9,6 +9,7 @@ use std::error::Error;
 
 // public key
 const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
+const APP_NAME: &str = "Trellminal";
 
 fn home_dir() -> Option<String> {
     match _home_dir() {

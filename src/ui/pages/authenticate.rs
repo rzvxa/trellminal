@@ -15,11 +15,6 @@ use crate::ui::{logo, DrawCall, RenderQueue, UIWidget};
 pub struct Authenticate {
     selected_button: u8,
 }
-const APP_NAME: &str = "Trellminal";
-// public key
-const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
-
-const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}&return_url=http://127.0.0.1:9999/auth");
 
 use async_trait::async_trait;
 #[async_trait]
@@ -53,9 +48,9 @@ impl Page for Authenticate {
         let btn_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Percentage(33),
-                Constraint::Percentage(33),
-                Constraint::Percentage(33),
+                Constraint::Length(2),
+                Constraint::Length(1),
+                Constraint::Length(1),
             ])
             .split(center_layout[3]);
 
@@ -74,14 +69,14 @@ impl Page for Authenticate {
         let btns = [
             (
                 0,
-                Paragraph::new("[1] Login automatically via browser")
+                Paragraph::new("<Login [a]utomatically via browser>")
                     .block(Block::default())
                     .wrap(Wrap { trim: true })
                     .alignment(Alignment::Center),
             ),
             (
                 1,
-                Paragraph::new("[2] Get login link and enter token manually")
+                Paragraph::new("<Get login link and enter token [m]anually>")
                     .block(Block::default())
                     .wrap(Wrap { trim: true })
                     .alignment(Alignment::Center),
@@ -109,8 +104,8 @@ impl Page for Authenticate {
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('1') => Operation::Navigate(String::from("/authenticate/browser")),
-                KeyCode::Char('2') => Operation::Navigate(String::from("/authenticate/manual")),
+                KeyCode::Char('a') => Operation::Navigate(String::from("/authenticate/browser")),
+                KeyCode::Char('m') => Operation::Navigate(String::from("/authenticate/manual")),
                 KeyCode::Char('j') => {
                     self.selected_button = 1;
                     Operation::None
@@ -134,31 +129,6 @@ impl Page for Authenticate {
                 },
                 _ => Operation::None,
             },
-            // Event::Request(req) => {
-            //     let url = req.url();
-            //     let token: &str = "token=";
-            //     let hash_index = url.find("token=");
-            //     if hash_index.is_some() {
-            //         let token: String = url
-            //             .chars()
-            //             .skip(hash_index.unwrap_or(0) + token.len())
-            //             .take(url.len() - token.len())
-            //             .collect();
-            //         let fetch_user_url = format!(
-            //             "https://api.trello.com/1/members/me/?key={}&token={}",
-            //             API_KEY, token
-            //         );
-            //         let body = reqwest::get(fetch_user_url)
-            //             .await
-            //             .ok()
-            //             .unwrap()
-            //             .text()
-            //             .await
-            //             .ok();
-            //         req.respond_with_view("auth_success.html").unwrap();
-            //     }
-            //     Operation::None
-            // }
             _ => Operation::None,
         }
     }

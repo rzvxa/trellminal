@@ -4,7 +4,7 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use crate::API_KEY;
+use crate::{API_KEY, APP_NAME};
 use crate::api::{Api, members::Members};
 
 use const_format::formatcp;
@@ -23,8 +23,8 @@ pub struct BrowserAuthenticate {
     failed_open_browser: bool,
     selected_button: u8,
 }
-const APP_NAME: &str = "Trellminal";
 
+const MENU_BUTTON_LEN: u8 = 2;
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}&return_url=http://127.0.0.1:9999/auth");
 
 use async_trait::async_trait;
@@ -83,9 +83,9 @@ impl Page for BrowserAuthenticate {
         let btn_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Percentage(33),
-                Constraint::Percentage(33),
-                Constraint::Percentage(33),
+                Constraint::Length(2),
+                Constraint::Length(1),
+                Constraint::Length(1),
             ])
             .split(center_layout[3]);
 
@@ -104,14 +104,14 @@ impl Page for BrowserAuthenticate {
         let btns = [
             (
                 0,
-                Paragraph::new("[1] Choose another method")
+                Paragraph::new("<Choose [a]nother method>")
                     .block(Block::default())
                     .wrap(Wrap { trim: true })
                     .alignment(Alignment::Center),
             ),
             (
                 1,
-                Paragraph::new("[2] Cancel and exit")
+                Paragraph::new("<Cancel and [q]uit>")
                     .block(Block::default())
                     .wrap(Wrap { trim: true })
                     .alignment(Alignment::Center),
@@ -139,22 +139,22 @@ impl Page for BrowserAuthenticate {
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('1') => Operation::Navigate(String::from("/authenticate")),
-                KeyCode::Char('2') => Operation::Exit,
+                KeyCode::Char('a') => Operation::Navigate(String::from("/authenticate")),
+                KeyCode::Char('q') => Operation::Exit,
                 KeyCode::Char('j') => {
-                    self.selected_button = 1;
+                    self.menu_down();
                     Operation::None
                 }
                 KeyCode::Char('k') => {
-                    self.selected_button = 0;
+                    self.menu_up();
                     Operation::None
                 }
                 KeyCode::Down => {
-                    self.selected_button = 1;
+                    self.menu_down();
                     Operation::None
                 }
                 KeyCode::Up => {
-                    self.selected_button = 0;
+                    self.menu_up();
                     Operation::None
                 }
                 KeyCode::Enter => match self.selected_button {
@@ -199,5 +199,19 @@ impl BrowserAuthenticate {
         } else {
             Operation::None
         }
+    }
+
+    fn menu_up(&mut self) -> bool {
+        if self.selected_button == 0 {
+            false
+        } else {
+            self.selected_button -= 1;
+            true
+        }
+    }
+
+    fn menu_down(&mut self) -> bool {
+        self.selected_button = std::cmp::min(self.selected_button + 1, MENU_BUTTON_LEN - 1);
+        true
     }
 }
