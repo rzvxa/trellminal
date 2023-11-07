@@ -6,6 +6,7 @@ use tui::{
 
 use crate::api::{members::Members, Api};
 use crate::{API_KEY, APP_NAME};
+use qrcode::{QrCode, EcLevel, Version};
 
 use const_format::formatcp;
 
@@ -19,6 +20,7 @@ const MENU_BUTTON_LEN: u8 = 4;
 pub struct ManualAuthenticate {
     selected_button: u8,
     show_qr_code: bool,
+    qr_black_on_white: bool,
 }
 
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}");
@@ -187,6 +189,7 @@ impl ManualAuthenticate {
         Self {
             selected_button: 0,
             show_qr_code: false,
+            qr_black_on_white: true,
         }
     }
 
@@ -207,15 +210,59 @@ impl ManualAuthenticate {
     fn show_qr_code<'a>(&self, rect: Rect) -> RenderQueue<'a> {
         let layout = Layout::default()
             .direction(Direction::Vertical)
-            .margin(3)
-            .constraints([Constraint::Min(20), Constraint::Length(1)])
+            .margin(1)
+            .constraints([
+                Constraint::Min(30),
+                Constraint::Length(1),
+            ])
             .split(rect);
-        let block = Block::default().title("QR code").borders(Borders::ALL);
-        let text = Paragraph::new("<O[k]>");
+
+        let btn_line = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(33),
+                Constraint::Percentage(33),
+                Constraint::Percentage(33),
+            ])
+            .split(layout[1]);
+        let btn_layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(33),
+                Constraint::Percentage(10),
+                Constraint::Percentage(33),
+            ])
+            .split(btn_line[1]);
+
+        let colors = match self.qr_black_on_white {
+            true => ("██", "  "),
+            false => ("  ", "██"),
+        };
+        let qr_mode = match self.qr_black_on_white {
+            true => "dark theme terminals",
+            false => "light theme terminals",
+        };
+
+        let qr_code = QrCode::with_version(AUTH_URL, Version::Normal(7), EcLevel::L).unwrap();
+        let qr_string = qr_code.render(). light_color(colors.0).dark_color(colors.1).quiet_zone(true).build();
+        let mut can_view_qr = true;
+        let qr_display = if qr_string.lines().count() - 3 > layout[0].height.into() {
+            can_view_qr = false;
+            "Cannot display QR code, terminal height is too short, Trello authentication link is too long... I can fix it with a shorten link but I don't trust thirdparty services and I can't host one at the moment. Consider donating a VPS for hosting trellminal if you want to help with this.\n If you know some QR magic for making it more compact comsider creating a PR for the project or at least inform us about it!".to_string()
+        } else {
+            qr_string
+        };
+
+        let block = Block::default().title(format!("QR code for {}", qr_mode)).borders(Borders::ALL);
+        let qr = Paragraph::new(qr_display).alignment(Alignment::Center).wrap(Wrap { trim: can_view_qr });
+        let ok_btn = Paragraph::new("<O[k]>").style(Style::default().fg(Color::Yellow)).alignment(Alignment::Left);
+        let toggle_btn = Paragraph::new("<[T]oggle colors>").style(Style::default().fg(Color::Yellow)).alignment(Alignment::Right);
         vec![
             DrawCall::new(UIWidget::Clear, rect),
             DrawCall::new(UIWidget::Block(block), rect),
-            DrawCall::new(UIWidget::Paragraph(text), layout[1]),
+            DrawCall::new(UIWidget::Paragraph(qr), layout[0]),
+            DrawCall::new(UIWidget::Paragraph(ok_btn), btn_layout[0]),
+            DrawCall::new(UIWidget::Paragraph(toggle_btn), btn_layout[2]),
         ]
     }
 
@@ -224,6 +271,9 @@ impl ManualAuthenticate {
             Event::Input(event) => match event.code {
                 KeyCode::Char('k') | KeyCode::Enter => {
                     self.show_qr_code = false;
+                }
+                KeyCode::Char('t') | KeyCode::Char('T') => {
+                    self.qr_black_on_white = !self.qr_black_on_white;
                 }
                 _ => {}
             },
