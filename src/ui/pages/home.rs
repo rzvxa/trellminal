@@ -1,13 +1,13 @@
 use tui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
 use crate::api::Api;
 use crate::database::Database;
-use crate::input::{Event, KeyCode, EventSender};
-use crate::ui::{DrawCall, RenderQueue, UIWidget};
+use crate::input::{Event, EventSender, KeyCode};
+use crate::ui::Frame;
 use crate::ui::{Operation, Page};
 
 const WELCOME_TEXT: &str = "HOME";
@@ -23,7 +23,8 @@ impl Page for Home {
 
     fn unmount(&mut self) {}
 
-    fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
+    fn draw(&self, frame: &mut Frame) {
+        let rect = frame.size();
         let block = Block::default().title("Welcome").borders(Borders::ALL);
 
         let main_layout = Layout::default()
@@ -77,12 +78,10 @@ impl Page for Home {
         });
 
         let mut btn_iter = btns.into_iter();
-        vec![
-            DrawCall::new(UIWidget::Block(block), rect),
-            DrawCall::new(UIWidget::Paragraph(test), center_layout[0]),
-            DrawCall::new(UIWidget::Paragraph(btn_iter.next().unwrap()), btn_layout[2]),
-            DrawCall::new(UIWidget::Paragraph(btn_iter.next().unwrap()), btn_layout[0]),
-        ]
+        frame.render_widget(block, rect);
+        frame.render_widget(test, center_layout[0]);
+        frame.render_widget(btn_iter.next().unwrap(), btn_layout[2]);
+        frame.render_widget(btn_iter.next().unwrap(), btn_layout[0]);
     }
 
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {

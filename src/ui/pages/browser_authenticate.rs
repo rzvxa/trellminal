@@ -1,11 +1,11 @@
 use tui::{
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
+use crate::api::{members::Members, Api};
 use crate::{API_KEY, APP_NAME};
-use crate::api::{Api, members::Members};
 
 use const_format::formatcp;
 use webbrowser;
@@ -15,7 +15,7 @@ use crate::input::{
     http_server::{HttpServer, Request, RespondWithHtml},
     Event, EventSender, KeyCode,
 };
-use crate::ui::{logo, DrawCall, RenderQueue, UIWidget};
+use crate::ui::{misc::logo, Frame};
 use crate::ui::{Operation, Page};
 
 pub struct BrowserAuthenticate {
@@ -56,7 +56,8 @@ impl Page for BrowserAuthenticate {
         }
     }
 
-    fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
+    fn draw(&self, frame: &mut Frame) {
+        let rect = frame.size();
         let block = Block::default()
             .title("Authenticate using a browser")
             .borders(Borders::ALL);
@@ -126,14 +127,12 @@ impl Page for BrowserAuthenticate {
         });
 
         let mut btn_iter = btns.into_iter();
-        vec![
-            DrawCall::new(UIWidget::Block(block), rect),
-            DrawCall::new(UIWidget::Paragraph(logo), center_layout[0]),
-            DrawCall::new(UIWidget::Paragraph(title), center_layout[1]),
-            DrawCall::new(UIWidget::Paragraph(text), btn_layout[0]),
-            DrawCall::new(UIWidget::Paragraph(btn_iter.next().unwrap()), btn_layout[1]),
-            DrawCall::new(UIWidget::Paragraph(btn_iter.next().unwrap()), btn_layout[2]),
-        ]
+        frame.render_widget(block, rect);
+        frame.render_widget(logo, center_layout[0]);
+        frame.render_widget(title, center_layout[1]);
+        frame.render_widget(text, btn_layout[0]);
+        frame.render_widget(btn_iter.next().unwrap(), btn_layout[1]);
+        frame.render_widget(btn_iter.next().unwrap(), btn_layout[2]);
     }
 
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {

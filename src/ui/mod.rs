@@ -1,6 +1,7 @@
-mod logo;
+mod misc;
 mod pages;
 mod router;
+mod widgets;
 
 use crate::api::Api;
 use crate::database::Database;
@@ -11,12 +12,11 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use router::Router;
-use std::{error::Error, io};
-use tui::{
-    backend::CrosstermBackend,
-    widgets::{BarChart, Block, Chart, Clear, Gauge, List, Paragraph, Sparkline, Table, Tabs},
-    Terminal,
+use std::{
+    error::Error,
+    io::{self, Stdout},
 };
+use tui::{backend::CrosstermBackend, Frame as TFrame, Terminal};
 
 use pages::{
     authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
@@ -33,11 +33,13 @@ pub enum Operation {
     Exit,
 }
 
+type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
+
 #[async_trait]
 pub trait Page {
     fn mount(&mut self, event_sender: EventSender);
     fn unmount(&mut self);
-    fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a>;
+    fn draw(&self, frame: &mut Frame);
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation;
 }
 
@@ -72,33 +74,6 @@ impl<'a> UITerminal {
         &self.router
     }
 }
-
-enum UIWidget<'a> {
-    Block(Block<'a>),
-    Tabs(Tabs<'a>),
-    List(List<'a>),
-    Table(Table<'a>),
-    Paragraph(Paragraph<'a>),
-    Chart(Chart<'a>),
-    BarChart(BarChart<'a>),
-    Gauge(Gauge<'a>),
-    Sparkline(Sparkline<'a>),
-    Clear,
-}
-
-pub struct DrawCall<'a> {
-    z: u8,
-    rect: Rect,
-    widget: UIWidget<'a>,
-}
-
-impl<'a> DrawCall<'a> {
-    fn new(widget: UIWidget<'a>, rect: Rect) -> Self {
-        Self { widget, rect, z: 0 }
-    }
-}
-
-pub type RenderQueue<'a> = Vec<DrawCall<'a>>;
 
 pub fn init(
     db: Database,
@@ -149,22 +124,7 @@ pub async fn update(terminal: &mut UITerminal, event: Event) -> Result<bool, Box
 pub fn draw(terminal: &mut UITerminal) -> Result<(), Box<dyn Error>> {
     terminal.internal.draw(|frame| {
         let rect = frame.size();
-        let mut widgets = terminal.router.current().unwrap().draw(rect);
-        widgets.sort_by(|lhs, rhs| lhs.z.cmp(&rhs.z));
-        widgets.into_iter().for_each(|w| {
-            match w.widget {
-                UIWidget::Block(widget) => frame.render_widget(widget, w.rect),
-                UIWidget::Tabs(widget) => frame.render_widget(widget, w.rect),
-                UIWidget::List(widget) => frame.render_widget(widget, w.rect),
-                UIWidget::Table(widget) => frame.render_widget(widget, w.rect),
-                UIWidget::Paragraph(widget) => frame.render_widget(widget, w.rect),
-                UIWidget::Chart(widget) => frame.render_widget(widget, w.rect),
-                UIWidget::BarChart(widget) => frame.render_widget(widget, w.rect),
-                UIWidget::Gauge(widget) => frame.render_widget(widget, w.rect),
-                UIWidget::Sparkline(widget) => frame.render_widget(widget, w.rect),
-                UIWidget::Clear => frame.render_widget(Clear, w.rect),
-            };
-        });
+        terminal.router.current().unwrap().draw(frame);
     })?;
     Ok(())
 }

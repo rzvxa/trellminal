@@ -4,6 +4,8 @@ use tui::{
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
 
+use tui_textarea::{Input, Key, TextArea};
+
 use crate::api::{members::Members, Api};
 use crate::{API_KEY, APP_NAME};
 use qrcode::{EcLevel, QrCode, Version};
@@ -12,18 +14,18 @@ use const_format::formatcp;
 
 use crate::database::Database;
 use crate::input::{Event, EventSender, KeyCode};
-use crate::ui::{logo, DrawCall, RenderQueue, UIWidget};
+use crate::ui::{misc::logo, Frame};
 use crate::ui::{Operation, Page};
 
 const MENU_BUTTON_LEN: u8 = 4;
 
-pub struct ManualAuthenticate {
+pub struct ManualAuthenticate<'a> {
     selected_button: u8,
     show_qr_code: bool,
     qr_black_on_white: bool,
     qr_selected_button: u8,
     show_enter_token_dialog: bool,
-    enter_token_selected_button: u8,
+    token_text_area: TextArea<'a>,
 }
 
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}");
@@ -31,12 +33,13 @@ const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day
 use async_trait::async_trait;
 
 #[async_trait]
-impl Page for ManualAuthenticate {
+impl<'a> Page for ManualAuthenticate<'a> {
     fn mount(&mut self, event_sender: EventSender) {}
 
     fn unmount(&mut self) {}
 
-    fn draw<'a>(&self, rect: Rect) -> RenderQueue<'a> {
+    fn draw(&self, frame: &mut Frame) {
+        let rect = frame.size();
         let block = Block::default()
             .title("Authenticate manually")
             .borders(Borders::ALL);
@@ -122,28 +125,25 @@ impl Page for ManualAuthenticate {
         });
 
         let mut btn_iter = btns.into_iter();
-        let mut draw_calls = vec![
-            DrawCall::new(UIWidget::Block(block), rect),
-            DrawCall::new(UIWidget::Paragraph(logo), main_layout[1]),
-            DrawCall::new(UIWidget::Paragraph(title), main_layout[2]),
-            DrawCall::new(UIWidget::Paragraph(text), btn_layout[0]),
-            DrawCall::new(UIWidget::Paragraph(link), main_layout[3]),
-            DrawCall::new(UIWidget::Paragraph(btn_iter.next().unwrap()), btn_layout[1]),
-            DrawCall::new(UIWidget::Paragraph(btn_iter.next().unwrap()), btn_layout[2]),
-            DrawCall::new(UIWidget::Paragraph(btn_iter.next().unwrap()), btn_layout[3]),
-            DrawCall::new(UIWidget::Paragraph(btn_iter.next().unwrap()), btn_layout[4]),
-        ];
+        frame.render_widget(block, rect);
+        frame.render_widget(logo, main_layout[1]);
+        frame.render_widget(title, main_layout[2]);
+        frame.render_widget(text, btn_layout[0]);
+        frame.render_widget(link, main_layout[3]);
+        frame.render_widget(btn_iter.next().unwrap(), btn_layout[1]);
+        frame.render_widget(btn_iter.next().unwrap(), btn_layout[2]);
+        frame.render_widget(btn_iter.next().unwrap(), btn_layout[3]);
+        frame.render_widget(btn_iter.next().unwrap(), btn_layout[4]);
 
         if self.show_enter_token_dialog {
             let layout = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([Constraint::Length(8), Constraint::Min(1)])
                 .split(center_layout[0]);
-            draw_calls.extend(self.show_enter_token_dialog(layout[0]));
+            self.show_enter_token_dialog(frame, layout[0]);
         } else if self.show_qr_code {
-            draw_calls.extend(self.show_qr_code(rect));
+            self.show_qr_code(frame, rect);
         }
-        draw_calls
     }
 
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
@@ -157,7 +157,7 @@ impl Page for ManualAuthenticate {
             match event {
                 Event::Input(event) => match event.code {
                     KeyCode::Char('e') => {
-                        self.show_enter_token_dialog = true;
+                        self.set_show_enter_token_dialog(true);
                         Operation::None
                     }
                     KeyCode::Char('c') => {
@@ -176,7 +176,7 @@ impl Page for ManualAuthenticate {
                     }
                     KeyCode::Enter => match self.selected_button {
                         0 => {
-                            self.show_enter_token_dialog = true;
+                            self.set_show_enter_token_dialog(true);
                             Operation::None
                         }
                         1 => {
@@ -195,7 +195,7 @@ impl Page for ManualAuthenticate {
     }
 }
 
-impl ManualAuthenticate {
+impl<'a> ManualAuthenticate<'a> {
     pub fn new() -> Self {
         Self {
             selected_button: 0,
@@ -203,7 +203,7 @@ impl ManualAuthenticate {
             qr_black_on_white: true,
             qr_selected_button: 0,
             show_enter_token_dialog: false,
-            enter_token_selected_button: 1,
+            token_text_area: TextArea::new(vec!["hello".to_string()]),
         }
     }
 
@@ -221,7 +221,15 @@ impl ManualAuthenticate {
         true
     }
 
-    fn show_qr_code<'a>(&self, rect: Rect) -> RenderQueue<'a> {
+    fn set_show_enter_token_dialog(&mut self, value: bool) {
+        if value {
+            self.token_text_area = TextArea::new(vec!["hello".to_string()]);
+        }
+
+        self.show_enter_token_dialog = value;
+    }
+
+    fn show_qr_code(&self, frame: &mut Frame, rect: Rect) {
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
@@ -290,16 +298,14 @@ impl ManualAuthenticate {
             }
         })
         .into_iter();
-        vec![
-            DrawCall::new(UIWidget::Clear, rect),
-            DrawCall::new(UIWidget::Block(block), rect),
-            DrawCall::new(UIWidget::Paragraph(qr), layout[0]),
-            DrawCall::new(UIWidget::Paragraph(btns.next().unwrap()), btn_layout[0]),
-            DrawCall::new(UIWidget::Paragraph(btns.next().unwrap()), btn_layout[2]),
-        ]
+        frame.render_widget(Clear, rect);
+        frame.render_widget(block, rect);
+        frame.render_widget(qr, layout[0]);
+        frame.render_widget(btns.next().unwrap(), btn_layout[0]);
+        frame.render_widget(btns.next().unwrap(), btn_layout[2]);
     }
 
-    fn show_enter_token_dialog<'a>(&self, rect: Rect) -> RenderQueue<'a> {
+    fn show_enter_token_dialog(&self, frame: &mut Frame, rect: Rect) {
         let block = Block::default()
             .title("Enter your token")
             .borders(Borders::ALL);
@@ -320,17 +326,19 @@ impl ManualAuthenticate {
         let enter_btn = Paragraph::new("<Enter>")
             .alignment(Alignment::Center)
             .style(Style::default().fg(Color::Yellow));
-        vec![
-            DrawCall::new(UIWidget::Clear, rect),
-            DrawCall::new(UIWidget::Block(block), rect),
-            DrawCall::new(UIWidget::Paragraph(enter_btn), btn_line[1]),
-        ]
+        // let text_area = self.token_text_area.into_textarea_widget();
+        // self.token_text_area.widget();
+
+        frame.render_widget(Clear, rect);
+        frame.render_widget(block, rect);
+        frame.render_widget(enter_btn, btn_line[1]);
+        frame.render_widget(self.token_text_area.widget(), rect);
     }
 
     fn enter_token_dialog_update(&mut self, event: Event) {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Enter => self.show_enter_token_dialog = false,
+                KeyCode::Enter => self.set_show_enter_token_dialog(false),
                 _ => {}
             },
             _ => {}
@@ -340,13 +348,17 @@ impl ManualAuthenticate {
     fn qr_code_dialog_update(&mut self, event: Event) {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('k') | KeyCode::Enter => self.show_qr_code = false,
+                KeyCode::Char('k') => self.show_qr_code = false,
                 KeyCode::Char('t') | KeyCode::Char('T') => {
                     self.qr_black_on_white = !self.qr_black_on_white
                 }
                 KeyCode::Left | KeyCode::Char('h') => self.qr_selected_button = 0,
                 KeyCode::Right | KeyCode::Char('l') => self.qr_selected_button = 1,
-
+                KeyCode::Enter => match self.qr_selected_button {
+                    0 => self.show_qr_code = false,
+                    1 => self.qr_black_on_white = !self.qr_black_on_white,
+                    _ => {}
+                },
                 _ => {}
             },
             _ => {}
