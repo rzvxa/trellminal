@@ -25,7 +25,7 @@ pub struct ManualAuthenticate<'a> {
     qr_black_on_white: bool,
     qr_selected_button: u8,
     show_enter_token_dialog: bool,
-    token_text_area: TextArea<'a>,
+    token_textarea: TextArea<'a>,
 }
 
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}");
@@ -203,7 +203,7 @@ impl<'a> ManualAuthenticate<'a> {
             qr_black_on_white: true,
             qr_selected_button: 0,
             show_enter_token_dialog: false,
-            token_text_area: TextArea::new(vec!["hello".to_string()]),
+            token_textarea: TextArea::new(vec![]),
         }
     }
 
@@ -223,7 +223,12 @@ impl<'a> ManualAuthenticate<'a> {
 
     fn set_show_enter_token_dialog(&mut self, value: bool) {
         if value {
-            self.token_text_area = TextArea::new(vec!["hello".to_string()]);
+            self.token_textarea = TextArea::new(vec!["hello".to_string()]);
+            self.token_textarea = TextArea::new(vec![]);
+            self.token_textarea
+                .set_block(Block::default().title("Token:").borders(Borders::ALL));
+            self.token_textarea
+                .set_placeholder_text("Enter your token...");
         }
 
         self.show_enter_token_dialog = value;
@@ -233,7 +238,7 @@ impl<'a> ManualAuthenticate<'a> {
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
-            .constraints([Constraint::Min(30), Constraint::Length(1)])
+            .constraints([Constraint::Min(5), Constraint::Length(1)])
             .split(rect);
 
         let btn_line = Layout::default()
@@ -306,14 +311,17 @@ impl<'a> ManualAuthenticate<'a> {
     }
 
     fn show_enter_token_dialog(&self, frame: &mut Frame, rect: Rect) {
-        let block = Block::default()
-            .title("Enter your token")
-            .borders(Borders::ALL);
+        let block = Block::default().borders(Borders::ALL);
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
-            .constraints([Constraint::Min(1), Constraint::Length(1)])
+            .constraints([Constraint::Min(5), Constraint::Length(1)])
             .split(rect);
+
+        let center_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Percentage(33)])
+            .split(layout[0]);
 
         let btn_line = Layout::default()
             .direction(Direction::Horizontal)
@@ -326,20 +334,20 @@ impl<'a> ManualAuthenticate<'a> {
         let enter_btn = Paragraph::new("<Enter>")
             .alignment(Alignment::Center)
             .style(Style::default().fg(Color::Yellow));
-        // let text_area = self.token_text_area.into_textarea_widget();
-        // self.token_text_area.widget();
 
         frame.render_widget(Clear, rect);
         frame.render_widget(block, rect);
         frame.render_widget(enter_btn, btn_line[1]);
-        frame.render_widget(self.token_text_area.widget(), rect);
+        frame.render_widget(self.token_textarea.widget(), center_layout[0]);
     }
 
     fn enter_token_dialog_update(&mut self, event: Event) {
         match event {
-            Event::Input(event) => match event.code {
+            Event::Input(key_event) => match key_event.code {
                 KeyCode::Enter => self.set_show_enter_token_dialog(false),
-                _ => {}
+                _ => {
+                    self.token_textarea.input(event);
+                }
             },
             _ => {}
         }

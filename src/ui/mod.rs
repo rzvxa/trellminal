@@ -1,7 +1,6 @@
 mod misc;
 mod pages;
 mod router;
-mod widgets;
 
 use crate::api::Api;
 use crate::database::Database;
@@ -123,7 +122,6 @@ pub async fn update(terminal: &mut UITerminal, event: Event) -> Result<bool, Box
 
 pub fn draw(terminal: &mut UITerminal) -> Result<(), Box<dyn Error>> {
     terminal.internal.draw(|frame| {
-        let rect = frame.size();
         terminal.router.current().unwrap().draw(frame);
     })?;
     Ok(())
