@@ -26,6 +26,7 @@ pub struct ManualAuthenticate<'a> {
     qr_selected_button: u8,
     show_enter_token_dialog: bool,
     token_textarea: TextArea<'a>,
+    error_token: bool,
 }
 
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}");
@@ -148,8 +149,7 @@ impl<'a> Page for ManualAuthenticate<'a> {
 
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
         if self.show_enter_token_dialog {
-            self.enter_token_dialog_update(event);
-            Operation::None
+            self.enter_token_dialog_update(event, db, api).await
         } else if self.show_qr_code {
             self.qr_code_dialog_update(event);
             Operation::None
@@ -204,6 +204,7 @@ impl<'a> ManualAuthenticate<'a> {
             qr_selected_button: 0,
             show_enter_token_dialog: false,
             token_textarea: TextArea::new(vec![]),
+            error_token: false,
         }
     }
 
@@ -223,10 +224,9 @@ impl<'a> ManualAuthenticate<'a> {
 
     fn set_show_enter_token_dialog(&mut self, value: bool) {
         if value {
-            self.token_textarea = TextArea::new(vec!["hello".to_string()]);
             self.token_textarea = TextArea::new(vec![]);
             self.token_textarea
-                .set_block(Block::default().title("Token:").borders(Borders::ALL));
+                .set_block(Block::default().borders(Borders::ALL));
             self.token_textarea
                 .set_placeholder_text("Enter your token...");
         }
@@ -311,7 +311,7 @@ impl<'a> ManualAuthenticate<'a> {
     }
 
     fn show_enter_token_dialog(&self, frame: &mut Frame, rect: Rect) {
-        let block = Block::default().borders(Borders::ALL);
+        let block = Block::default().title("Token:").borders(Borders::ALL);
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .margin(1)
@@ -341,15 +341,49 @@ impl<'a> ManualAuthenticate<'a> {
         frame.render_widget(self.token_textarea.widget(), center_layout[0]);
     }
 
-    fn enter_token_dialog_update(&mut self, event: Event) {
+    async fn enter_token_dialog_update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
         match event {
             Event::Input(key_event) => match key_event.code {
-                KeyCode::Enter => self.set_show_enter_token_dialog(false),
+                KeyCode::Enter => {
+                    let token = match self.token_textarea.lines().first() {
+                        Some(token) => token.clone(),
+                        None => "".to_string(),
+                    };
+                    api.auth(token.clone());
+                    if let Ok(user) = api.members_me().await {
+                        db.users.insert(user.username, token);
+                        db.first_load = false;
+                        self.set_show_enter_token_dialog(false);
+                        Operation::Navigate("/".to_string())
+                    } else {
+                        self.token_textarea
+                            .set_style(Style::default().fg(Color::Red));
+                        self.token_textarea.set_block(
+                            Block::default()
+                                .title("Invalid Token!")
+                                .title_alignment(Alignment::Center)
+                                .borders(Borders::ALL)
+                                .style(Style::default().fg(Color::Red)),
+                        );
+                        self.error_token = true;
+                        Operation::None
+                    }
+                }
                 _ => {
+                    if self.error_token {
+                        self.token_textarea.set_style(Style::default());
+                        self.token_textarea.set_block(
+                            Block::default()
+                                .borders(Borders::ALL)
+                                .style(Style::default()),
+                        );
+                        self.error_token = false;
+                    }
                     self.token_textarea.input(event);
+                    Operation::None
                 }
             },
-            _ => {}
+            _ => Operation::None
         }
     }
 
