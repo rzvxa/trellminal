@@ -192,8 +192,8 @@ impl BrowserAuthenticate {
             api.auth(token.clone());
             let user = api.members_me().await.unwrap();
             let user_id = user.id.clone();
-            db.add_user_account(user, token);
-            db.set_active_account(user_id);
+            db.add_user_account(user, token).unwrap();
+            db.set_active_account(user_id).unwrap();
             db.first_load = false;
             req.respond_with_html("auth_success.html").unwrap();
             Operation::Navigate("/".to_string())

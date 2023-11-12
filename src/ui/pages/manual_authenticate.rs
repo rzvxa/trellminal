@@ -357,8 +357,8 @@ impl<'a> ManualAuthenticate<'a> {
                     api.auth(token.clone());
                     if let Ok(user) = api.members_me().await {
                         let user_id = user.id.clone();
-                        db.add_user_account(user, token);
-                        db.set_active_account(user_id);
+                        db.add_user_account(user, token).unwrap();
+                        db.set_active_account(user_id).unwrap();
                         db.first_load = false;
                         self.set_show_enter_token_dialog(false);
                         Operation::Navigate("/".to_string())
