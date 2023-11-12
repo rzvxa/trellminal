@@ -1,23 +1,45 @@
 <html>
   <head>
     <script>
-      // parsing hash params borrowed from:
-      // https://stackoverflow.com/a/4198132
-      var params = {};
-      var e,
-        a = /\+/g,  // Regex for replacing addition symbol with a space
-        r = /([^&;=]+)=?([^&;]*)/g,
-        d = function (s) { return decodeURIComponent(s.replace(a, " ")); },
-        q = window.location.hash.substring(1);
+      document.addEventListener(
+        "DOMContentLoaded",
+        function () {
+          var params,
+            location = window.location,
+            body = window.document.body;
+          // parsing hash params borrowed from:
+          // https://stackoverflow.com/a/4198132
+          params = (function () {
+            var p = {},
+              e,
+              a = /\+/g, // Regex for replacing addition symbol with a space
+              r = /([^&;=]+)=?([^&;]*)/g,
+              d = function (s) {
+                return decodeURIComponent(s.replace(a, " "));
+              },
+              q = window.location.hash.substring(1);
 
-      while (e = r.exec(q))
-        params[d(e[1])] = d(e[2]);
-      if (params.token !== undefined) {
-        var location = window.location
-        location.replace('http://' + location.host + '/token/' + params.token)
-      } else {
-        document.body.innerText = "Something went wrong!" 
-      }
+            while ((e = r.exec(q))) {
+              p[d(e[1])] = d(e[2]);
+            }
+            return p;
+          })();
+          if (params.token !== undefined && params.token !== "") {
+            location.replace(
+              "http://" + location.host + "/token/" + params.token
+            );
+          } else if (params.error !== undefined && params.error !== "") {
+            if (params.error === "Token request rejected") {
+              body.innerText = 'Authentication canceled';
+            } else {
+              body.innerText = 'Trello says: "' + params.error + '"';
+            }
+          } else {
+            body.innerText = "Something went wrong!";
+          }
+        },
+        false
+      );
     </script>
   </head>
   <body>

@@ -24,7 +24,7 @@ pub struct BrowserAuthenticate {
     selected_button: u8,
 }
 
-const MENU_BUTTON_LEN: u8 = 2;
+const MENU_BUTTON_LEN: u8 = 3;
 const AUTH_URL: &str = formatcp!("https://trello.com/1/authorize?expiration=1day&name={APP_NAME}&scope=read&response_type=token&key={API_KEY}&return_url=http://127.0.0.1:9999/auth");
 
 use async_trait::async_trait;
@@ -47,7 +47,6 @@ fn request_validator(req: &Request) -> bool {
 impl Page for BrowserAuthenticate {
     fn mount(&mut self, event_sender: EventSender) {
         self.web_server = Some(HttpServer::new(event_sender, "9999", request_validator));
-        self.failed_open_browser = !webbrowser::open(AUTH_URL).is_ok();
     }
 
     fn unmount(&mut self) {
@@ -84,7 +83,7 @@ impl Page for BrowserAuthenticate {
         let btn_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
-                Constraint::Length(2),
+                Constraint::Length(1),
                 Constraint::Length(1),
                 Constraint::Length(1),
             ])
@@ -98,20 +97,23 @@ impl Page for BrowserAuthenticate {
             .block(Block::default())
             .wrap(Wrap { trim: true })
             .alignment(Alignment::Center);
-        let text = Paragraph::new("Select your authentication method:")
-            .block(Block::default())
-            .wrap(Wrap { trim: true })
-            .alignment(Alignment::Center);
         let btns = [
             (
                 0,
-                Paragraph::new("<Choose [a]nother method>")
+                Paragraph::new("<Open the br[o]wser>")
                     .block(Block::default())
                     .wrap(Wrap { trim: true })
                     .alignment(Alignment::Center),
             ),
             (
                 1,
+                Paragraph::new("<Choose [a]nother method>")
+                    .block(Block::default())
+                    .wrap(Wrap { trim: true })
+                    .alignment(Alignment::Center),
+            ),
+            (
+                2,
                 Paragraph::new("<Cancel and [q]uit>")
                     .block(Block::default())
                     .wrap(Wrap { trim: true })
@@ -130,7 +132,16 @@ impl Page for BrowserAuthenticate {
         frame.render_widget(block, rect);
         frame.render_widget(logo, center_layout[0]);
         frame.render_widget(title, center_layout[1]);
-        frame.render_widget(text, btn_layout[0]);
+        if self.failed_open_browser {
+            let browser_error =
+                Paragraph::new("Failed to open browser, you can try manual authentication!")
+                    .block(Block::default())
+                    .wrap(Wrap { trim: true })
+                    .alignment(Alignment::Center)
+                    .style(Style::default().fg(Color::Red));
+            frame.render_widget(browser_error, center_layout[2]);
+        }
+        frame.render_widget(btn_iter.next().unwrap(), btn_layout[0]);
         frame.render_widget(btn_iter.next().unwrap(), btn_layout[1]);
         frame.render_widget(btn_iter.next().unwrap(), btn_layout[2]);
     }
@@ -138,27 +149,27 @@ impl Page for BrowserAuthenticate {
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
+                KeyCode::Char('o') | KeyCode::Char('O') => {
+                    self.launch_browser();
+                    Operation::None
+                }
                 KeyCode::Char('a') => Operation::Navigate(String::from("/authenticate")),
                 KeyCode::Char('q') => Operation::Exit,
-                KeyCode::Char('j') => {
-                    self.menu_down();
-                    Operation::None
-                }
-                KeyCode::Char('k') => {
+                KeyCode::Up | KeyCode::Char('k') => {
                     self.menu_up();
                     Operation::None
                 }
-                KeyCode::Down => {
+                KeyCode::Char('j') | KeyCode::Down => {
                     self.menu_down();
-                    Operation::None
-                }
-                KeyCode::Up => {
-                    self.menu_up();
                     Operation::None
                 }
                 KeyCode::Enter => match self.selected_button {
-                    0 => Operation::Navigate(String::from("/authenticate")),
-                    1 => Operation::Navigate(String::from("/exit")),
+                    0 => {
+                        self.launch_browser();
+                        Operation::None
+                    }
+                    1 => Operation::Navigate(String::from("/authenticate")),
+                    2 => Operation::Navigate(String::from("/exit")),
                     _ => Operation::None,
                 },
                 _ => Operation::None,
@@ -180,7 +191,7 @@ impl BrowserAuthenticate {
 
     async fn dispatch_request(&self, req: Request, db: &mut Database, api: &mut Api) -> Operation {
         let url = req.url();
-        if url.starts_with("/auth") {
+        if url.starts_with(AUTH_ROUTE) {
             req.respond_with_html("auth.html").unwrap();
             Operation::None
         } else if url.starts_with(TOKEN_ROUTE) {
@@ -214,5 +225,10 @@ impl BrowserAuthenticate {
     fn menu_down(&mut self) -> bool {
         self.selected_button = std::cmp::min(self.selected_button + 1, MENU_BUTTON_LEN - 1);
         true
+    }
+
+    fn launch_browser(&mut self) -> bool {
+        self.failed_open_browser = !webbrowser::open(AUTH_URL).is_ok();
+        self.failed_open_browser
     }
 }
