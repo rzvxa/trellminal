@@ -25,7 +25,7 @@ impl Page for Home {
 
     fn draw(&self, frame: &mut Frame) {
         let rect = frame.size();
-        let block = Block::default().title("Welcome").borders(Borders::ALL);
+        let block = Block::default().title("Trellminal").borders(Borders::ALL);
 
         let main_layout = Layout::default()
             .direction(Direction::Vertical)

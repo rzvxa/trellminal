@@ -341,7 +341,12 @@ impl<'a> ManualAuthenticate<'a> {
         frame.render_widget(self.token_textarea.widget(), center_layout[0]);
     }
 
-    async fn enter_token_dialog_update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
+    async fn enter_token_dialog_update(
+        &mut self,
+        event: Event,
+        db: &mut Database,
+        api: &mut Api,
+    ) -> Operation {
         match event {
             Event::Input(key_event) => match key_event.code {
                 KeyCode::Enter => {
@@ -351,7 +356,9 @@ impl<'a> ManualAuthenticate<'a> {
                     };
                     api.auth(token.clone());
                     if let Ok(user) = api.members_me().await {
-                        db.users.insert(user.username, token);
+                        let user_id = user.id.clone();
+                        db.add_user_account(user, token);
+                        db.set_active_account(user_id);
                         db.first_load = false;
                         self.set_show_enter_token_dialog(false);
                         Operation::Navigate("/".to_string())
@@ -369,6 +376,10 @@ impl<'a> ManualAuthenticate<'a> {
                         Operation::None
                     }
                 }
+                KeyCode::Esc => {
+                    self.set_show_enter_token_dialog(false);
+                    Operation::None
+                }
                 _ => {
                     if self.error_token {
                         self.token_textarea.set_style(Style::default());
@@ -383,7 +394,7 @@ impl<'a> ManualAuthenticate<'a> {
                     Operation::None
                 }
             },
-            _ => Operation::None
+            _ => Operation::None,
         }
     }
 
@@ -396,6 +407,7 @@ impl<'a> ManualAuthenticate<'a> {
                 }
                 KeyCode::Left | KeyCode::Char('h') => self.qr_selected_button = 0,
                 KeyCode::Right | KeyCode::Char('l') => self.qr_selected_button = 1,
+                KeyCode::Esc => self.show_qr_code = false,
                 KeyCode::Enter => match self.qr_selected_button {
                     0 => self.show_qr_code = false,
                     1 => self.qr_black_on_white = !self.qr_black_on_white,
