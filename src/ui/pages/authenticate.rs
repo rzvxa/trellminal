@@ -10,6 +10,8 @@ use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::misc::logo;
 use crate::ui::{Frame, Operation, Page};
 
+const MENU_BUTTON_LEN: u8 = 3;
+
 pub struct Authenticate {
     selected_button: u8,
 }
@@ -50,6 +52,7 @@ impl Page for Authenticate {
                 Constraint::Length(2),
                 Constraint::Length(1),
                 Constraint::Length(1),
+                Constraint::Length(1),
             ])
             .split(center_layout[3]);
 
@@ -80,6 +83,13 @@ impl Page for Authenticate {
                     .wrap(Wrap { trim: true })
                     .alignment(Alignment::Center),
             ),
+            (
+                2,
+                Paragraph::new("<Can[c]el>")
+                    .block(Block::default())
+                    .wrap(Wrap { trim: true })
+                    .alignment(Alignment::Center),
+            ),
         ]
         .map(|btn| {
             if btn.0 == self.selected_button {
@@ -96,6 +106,7 @@ impl Page for Authenticate {
         frame.render_widget(text, btn_layout[0]);
         frame.render_widget(btn_iter.next().unwrap(), btn_layout[1]);
         frame.render_widget(btn_iter.next().unwrap(), btn_layout[2]);
+        frame.render_widget(btn_iter.next().unwrap(), btn_layout[3]);
     }
 
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
@@ -103,25 +114,19 @@ impl Page for Authenticate {
             Event::Input(event) => match event.code {
                 KeyCode::Char('a') => Operation::Navigate(String::from("/authenticate/browser")),
                 KeyCode::Char('m') => Operation::Navigate(String::from("/authenticate/manual")),
-                KeyCode::Char('j') => {
-                    self.selected_button = 1;
+                KeyCode::Char('c') => Operation::Navigate(String::from("/")),
+                KeyCode::Up | KeyCode::Char('k') => {
+                    self.menu_up();
                     Operation::None
                 }
-                KeyCode::Char('k') => {
-                    self.selected_button = 0;
-                    Operation::None
-                }
-                KeyCode::Down => {
-                    self.selected_button = 1;
-                    Operation::None
-                }
-                KeyCode::Up => {
-                    self.selected_button = 0;
+                KeyCode::Down | KeyCode::Char('j') => {
+                    self.menu_down();
                     Operation::None
                 }
                 KeyCode::Enter => match self.selected_button {
                     0 => Operation::Navigate(String::from("/authenticate/browser")),
                     1 => Operation::Navigate(String::from("/authenticate/manual")),
+                    2 => Operation::Navigate(String::from("/")),
                     _ => Operation::None,
                 },
                 _ => Operation::None,
@@ -134,5 +139,19 @@ impl Page for Authenticate {
 impl Authenticate {
     pub fn new() -> Self {
         Self { selected_button: 0 }
+    }
+
+    fn menu_up(&mut self) -> bool {
+        if self.selected_button == 0 {
+            false
+        } else {
+            self.selected_button -= 1;
+            true
+        }
+    }
+
+    fn menu_down(&mut self) -> bool {
+        self.selected_button = std::cmp::min(self.selected_button + 1, MENU_BUTTON_LEN - 1);
+        true
     }
 }
