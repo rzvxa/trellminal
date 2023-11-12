@@ -32,9 +32,16 @@ fn db_path() -> String {
 async fn main() -> Result<(), Box<dyn Error>> {
     let db = database::Database::load(db_path().as_str());
     let api = api::Api::new(API_KEY.to_string());
+    let initial_route = if db.accounts.is_empty() {
+        "/first_load"
+    } else if db.active_account.is_none() {
+        "/switch_account"
+    } else {
+        "/"
+    }.to_string();
 
     let (event_sender, event_receiver) = input::init();
-    let mut terminal = ui::init(db, api, event_sender).unwrap();
+    let mut terminal = ui::init(db, api, event_sender, initial_route).unwrap();
 
     loop {
         let event = event_receiver.recv().unwrap();

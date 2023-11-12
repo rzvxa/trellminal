@@ -78,6 +78,7 @@ pub fn init(
     db: Database,
     api: Api,
     event_sender: EventSender,
+    initial_route: String,
 ) -> Result<UITerminal, Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -97,7 +98,7 @@ pub fn init(
         )
         .route("/".to_string(), Home::new());
     router.navigate(
-        String::from(if db.first_load { "/first_load" } else { "/" }),
+        String::from(initial_route),
         event_sender.clone(),
     );
     Ok(UITerminal::new(terminal, db, api, event_sender, router))
