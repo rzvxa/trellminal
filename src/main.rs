@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }.to_string();
 
     let (event_sender, event_receiver) = input::init();
-    let mut terminal = ui::init(db, api, event_sender, initial_route).unwrap();
+    let mut context = ui::init(db, api, event_sender, initial_route).unwrap();
 
     loop {
         let event = event_receiver.recv().unwrap();
@@ -54,16 +54,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
 
-        if !ui::update(&mut terminal, event).await.unwrap_or(false) {
+        if !ui::update(&mut context, event).await.unwrap_or(false) {
             break;
         }
 
-        ui::draw(&mut terminal).unwrap();
+        ui::draw(&mut context).unwrap();
     }
 
-    ui::fini(&mut terminal).unwrap();
+    ui::fini(&mut context).unwrap();
 
-    terminal.db.save().expect("Failed to sync database");
+    context.db.save().expect("Failed to sync database");
 
     Ok(())
 }

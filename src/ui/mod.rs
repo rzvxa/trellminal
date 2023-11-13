@@ -44,7 +44,7 @@ pub trait Page {
 
 type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
 
-pub struct UITerminal {
+pub struct Context {
     pub internal: InternalTerminal,
     pub db: Database,
     pub api: Api,
@@ -52,7 +52,7 @@ pub struct UITerminal {
     router: Router,
 }
 
-impl<'a> UITerminal {
+impl<'a> Context {
     pub fn new(
         internal: InternalTerminal,
         db: Database,
@@ -79,7 +79,7 @@ pub fn init(
     api: Api,
     event_sender: EventSender,
     initial_route: String,
-) -> Result<UITerminal, Box<dyn Error>> {
+) -> Result<Context, Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -101,10 +101,10 @@ pub fn init(
         String::from(initial_route),
         event_sender.clone(),
     );
-    Ok(UITerminal::new(terminal, db, api, event_sender, router))
+    Ok(Context::new(terminal, db, api, event_sender, router))
 }
 
-pub async fn update(terminal: &mut UITerminal, event: Event) -> Result<bool, Box<dyn Error>> {
+pub async fn update(terminal: &mut Context, event: Event) -> Result<bool, Box<dyn Error>> {
     match terminal
         .router
         .current_mut()
@@ -121,14 +121,14 @@ pub async fn update(terminal: &mut UITerminal, event: Event) -> Result<bool, Box
     }
 }
 
-pub fn draw(terminal: &mut UITerminal) -> Result<(), Box<dyn Error>> {
+pub fn draw(terminal: &mut Context) -> Result<(), Box<dyn Error>> {
     terminal.internal.draw(|frame| {
         terminal.router.current().unwrap().draw(frame);
     })?;
     Ok(())
 }
 
-pub fn fini(terminal: &mut UITerminal) -> Result<(), Box<dyn Error>> {
+pub fn fini(terminal: &mut Context) -> Result<(), Box<dyn Error>> {
     disable_raw_mode()?;
     execute!(
         terminal.internal.backend_mut(),

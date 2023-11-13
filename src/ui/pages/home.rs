@@ -107,7 +107,7 @@ impl Page for Home {
                 }
                 KeyCode::Enter => match self.selected_button {
                     0 => Operation::Navigate(String::from("/authenticate")),
-                    1 => Operation::Navigate(String::from("/exit")),
+                    1 => Operation::Exit,
                     _ => Operation::None,
                 },
                 _ => Operation::None,
