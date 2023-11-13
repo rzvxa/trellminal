@@ -8,7 +8,7 @@ use crate::api::Api;
 use crate::database::Database;
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::Frame;
-use crate::ui::{Operation, Page};
+use crate::ui::{Operation, pages::Page};
 
 const WELCOME_TEXT: &str = "HOME";
 
@@ -19,9 +19,9 @@ pub struct Home {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Home {
-    fn mount(&mut self, event_sender: EventSender) {}
+    fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {}
 
-    fn unmount(&mut self) {}
+    fn unmount(&mut self, db: &Database, api: &Api) {}
 
     fn draw(&self, frame: &mut Frame) {
         let rect = frame.size();

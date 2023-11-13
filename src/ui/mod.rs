@@ -13,35 +13,22 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use router::Router;
-use std::{
-    error::Error,
-    io::{self, Stdout},
-};
-use tui::{backend::CrosstermBackend, Frame as TFrame, Terminal};
+use std::{error::Error, io::{self, Stdout}};
+use tui::{backend::CrosstermBackend, Terminal, Frame as TFrame};
 
 use pages::{
     authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
     home::Home, manual_authenticate::ManualAuthenticate,
 };
 
-use async_trait::async_trait;
-
 pub use tui::layout::Rect;
+
+type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
 
 pub enum Operation {
     None,
     Navigate(String),
     Exit,
-}
-
-type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
-
-#[async_trait]
-pub trait Page {
-    fn mount(&mut self, event_sender: EventSender);
-    fn unmount(&mut self);
-    fn draw(&self, frame: &mut Frame);
-    async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation;
 }
 
 pub fn init(
@@ -55,7 +42,7 @@ pub fn init(
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
-    let mut router = Router::new()
+    let router = Router::new()
         .route("/first_load".to_string(), FirstLoad::new())
         .route("/authenticate".to_string(), Authenticate::new())
         .route(
@@ -67,8 +54,14 @@ pub fn init(
             ManualAuthenticate::new(),
         )
         .route("/".to_string(), Home::new());
-    router.navigate(String::from(initial_route), event_sender.clone());
-    Ok(Context::new(terminal, db, api, event_sender, router))
+    let mut context = Context::new(terminal, db, api, event_sender.clone(), router);
+    context.router.navigate(
+        String::from(initial_route),
+        &context.db,
+        &context.api,
+        event_sender,
+    );
+    Ok(context)
 }
 
 pub async fn update(terminal: &mut Context, event: Event) -> Result<bool, Box<dyn Error>> {
@@ -80,7 +73,12 @@ pub async fn update(terminal: &mut Context, event: Event) -> Result<bool, Box<dy
         .await
     {
         Operation::Navigate(loc) => {
-            terminal.router.navigate(loc, terminal.event_sender.clone());
+            terminal.router.navigate(
+                loc,
+                &terminal.db,
+                &terminal.api,
+                terminal.event_sender.clone(),
+            );
             Ok(true)
         }
         Operation::Exit => Ok(false),

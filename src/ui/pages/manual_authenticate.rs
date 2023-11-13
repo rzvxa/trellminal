@@ -4,7 +4,7 @@ use tui::{
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
 
-use tui_textarea::{Input, Key, TextArea};
+use tui_textarea::TextArea;
 
 use crate::api::{members::Members, Api};
 use crate::{API_KEY, APP_NAME};
@@ -15,7 +15,7 @@ use const_format::formatcp;
 use crate::database::Database;
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::{misc::logo, Frame};
-use crate::ui::{Operation, Page};
+use crate::ui::{Operation, pages::Page};
 
 const MENU_BUTTON_LEN: u8 = 4;
 
@@ -35,9 +35,9 @@ use async_trait::async_trait;
 
 #[async_trait]
 impl<'a> Page for ManualAuthenticate<'a> {
-    fn mount(&mut self, event_sender: EventSender) {}
+    fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {}
 
-    fn unmount(&mut self) {}
+    fn unmount(&mut self, db: &Database, api: &Api) {}
 
     fn draw(&self, frame: &mut Frame) {
         let rect = frame.size();
