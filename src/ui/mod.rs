@@ -1,3 +1,4 @@
+mod context;
 mod misc;
 mod pages;
 mod router;
@@ -5,6 +6,7 @@ mod router;
 use crate::api::Api;
 use crate::database::Database;
 use crate::input::{Event, EventSender};
+use context::Context;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
@@ -42,38 +44,6 @@ pub trait Page {
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation;
 }
 
-type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
-
-pub struct Context {
-    pub internal: InternalTerminal,
-    pub db: Database,
-    pub api: Api,
-    pub event_sender: EventSender,
-    router: Router,
-}
-
-impl<'a> Context {
-    pub fn new(
-        internal: InternalTerminal,
-        db: Database,
-        api: Api,
-        event_sender: EventSender,
-        router: Router,
-    ) -> Self {
-        Self {
-            internal,
-            db,
-            api,
-            event_sender,
-            router,
-        }
-    }
-
-    pub fn router(&self) -> &Router {
-        &self.router
-    }
-}
-
 pub fn init(
     db: Database,
     api: Api,
@@ -97,10 +67,7 @@ pub fn init(
             ManualAuthenticate::new(),
         )
         .route("/".to_string(), Home::new());
-    router.navigate(
-        String::from(initial_route),
-        event_sender.clone(),
-    );
+    router.navigate(String::from(initial_route), event_sender.clone());
     Ok(Context::new(terminal, db, api, event_sender, router))
 }
 
