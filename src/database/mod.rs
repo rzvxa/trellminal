@@ -35,7 +35,7 @@ impl From<toml::de::Error> for DatabaseError {
 #[derive(Deserialize, Serialize)]
 pub struct Database {
     pub first_load: bool,
-    pub active_account: Option<Account>,
+    pub active_account: Option<UserId>,
     pub accounts: HashMap<UserId, Account>,
     path: String,
 }
@@ -78,7 +78,7 @@ impl Database {
 
     pub fn set_active_account(&mut self, id: UserId) -> Result<(), DatabaseError> {
         if self.accounts.contains_key(&id) {
-            self.active_account = Some(self.accounts.get(&id).unwrap().clone());
+            self.active_account = Some(id);
             Ok(())
         } else {
             Err(DatabaseError::KeyNotFound)
