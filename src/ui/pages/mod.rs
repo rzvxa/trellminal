@@ -11,8 +11,8 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait Page {
-    fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender);
-    fn unmount(&mut self, db: &Database, api: &Api);
+    async fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender);
+    async fn unmount(&mut self, db: &Database, api: &Api);
     fn draw(&mut self, frame: &mut Frame);
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation;
 }

@@ -18,9 +18,9 @@ pub struct NotFound {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for NotFound {
-    fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {}
+    async fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {}
 
-    fn unmount(&mut self, db: &Database, api: &Api) {}
+    async fn unmount(&mut self, db: &Database, api: &Api) {}
 
     fn draw(&mut self, frame: &mut Frame) {
         let rect = frame.size();

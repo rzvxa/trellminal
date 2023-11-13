@@ -43,7 +43,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     .to_string();
 
     let (event_sender, event_receiver) = input::init();
-    let mut context = ui::init(db, api, event_sender, initial_route).unwrap();
+    let mut context = ui::init(db, api, event_sender, initial_route)
+        .await
+        .unwrap();
 
     loop {
         let event = event_receiver.recv().unwrap();

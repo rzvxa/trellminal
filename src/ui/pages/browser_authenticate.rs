@@ -45,11 +45,11 @@ fn request_validator(req: &Request) -> bool {
 
 #[async_trait]
 impl Page for BrowserAuthenticate {
-    fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {
+    async fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {
         self.web_server = Some(HttpServer::new(event_sender, "9999", request_validator));
     }
 
-    fn unmount(&mut self, db: &Database, api: &Api) {
+    async fn unmount(&mut self, db: &Database, api: &Api) {
         if self.web_server.is_some() {
             self.web_server = None;
         }

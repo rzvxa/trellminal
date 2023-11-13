@@ -1,10 +1,11 @@
+use std::error::Error;
 use tui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, List, ListItem, ListState},
 };
 
-use crate::api::Api;
+use crate::api::{members::Members, Api};
 use crate::database::Database;
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::Frame;
@@ -18,19 +19,16 @@ pub struct Workspaces {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Workspaces {
-    fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {
+    async fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {
         self.workspaces.clear();
-        self.workspaces.append(&mut vec![
-            "First".to_string(),
-            "Second".to_string(),
-            "Third".to_string(),
-            "Forth".to_string(),
-            "Fifth".to_string(),
-        ]);
         self.state.select(Some(0));
+
+        if let Ok(mut me) = api.members_me().await {
+            self.workspaces.append(&mut me.id_organizations);
+        }
     }
 
-    fn unmount(&mut self, db: &Database, api: &Api) {}
+    async fn unmount(&mut self, db: &Database, api: &Api) {}
 
     fn draw(&mut self, frame: &mut Frame) {
         let rect = frame.size();
@@ -92,10 +90,10 @@ impl Workspaces {
     }
 
     pub fn down(&mut self) {
-        let current_index = self.state.selected().unwrap_or(0);
-        if current_index < 4 {
+        let new_index = self.state.selected().unwrap_or(0) + 1;
+        if new_index < self.workspaces.len() {
             self.state
-                .select(Some(self.state.selected().unwrap_or(0) + 1))
+                .select(Some(new_index))
         }
     }
 }

@@ -34,7 +34,7 @@ pub enum Operation {
     Exit,
 }
 
-pub fn init(
+pub async fn init(
     db: Database,
     api: Api,
     event_sender: EventSender,
@@ -64,7 +64,7 @@ pub fn init(
         &context.db,
         &context.api,
         event_sender,
-    );
+    ).await;
     Ok(context)
 }
 
@@ -82,7 +82,7 @@ pub async fn update(terminal: &mut Context, event: Event) -> Result<bool, Box<dy
                 &terminal.db,
                 &terminal.api,
                 terminal.event_sender.clone(),
-            );
+            ).await;
             Ok(true)
         }
         Operation::Exit => Ok(false),

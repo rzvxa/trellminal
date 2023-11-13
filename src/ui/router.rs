@@ -32,7 +32,7 @@ impl Router {
         self
     }
 
-    pub fn navigate(
+    pub async fn navigate(
         &mut self,
         location: String,
         db: &Database,
@@ -40,7 +40,7 @@ impl Router {
         event_sender: EventSender,
     ) {
         match self.current_mut() {
-            Some(cur) => cur.unmount(db, api),
+            Some(cur) => cur.unmount(db, api).await,
             _ => {}
         }
         self.location = if self.routes.contains_key(&location) {
@@ -49,7 +49,7 @@ impl Router {
             "/404".to_string()
         };
         match self.current_mut() {
-            Some(cur) => cur.mount(db, api, event_sender),
+            Some(cur) => cur.mount(db, api, event_sender).await,
             _ => {}
         }
     }
