@@ -13,12 +13,15 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use router::Router;
-use std::{error::Error, io::{self, Stdout}};
-use tui::{backend::CrosstermBackend, Terminal, Frame as TFrame};
+use std::{
+    error::Error,
+    io::{self, Stdout},
+};
+use tui::{backend::CrosstermBackend, Frame as TFrame, Terminal};
 
 use pages::{
     authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
-    home::Home, manual_authenticate::ManualAuthenticate,
+    home::Home, manual_authenticate::ManualAuthenticate, workspaces::Workspaces,
 };
 
 pub use tui::layout::Rect;
@@ -53,6 +56,7 @@ pub fn init(
             "/authenticate/manual".to_string(),
             ManualAuthenticate::new(),
         )
+        .route("/workspaces".to_string(), Workspaces::new())
         .route("/".to_string(), Home::new());
     let mut context = Context::new(terminal, db, api, event_sender.clone(), router);
     context.router.navigate(
@@ -88,7 +92,7 @@ pub async fn update(terminal: &mut Context, event: Event) -> Result<bool, Box<dy
 
 pub fn draw(terminal: &mut Context) -> Result<(), Box<dyn Error>> {
     terminal.internal.draw(|frame| {
-        terminal.router.current().unwrap().draw(frame);
+        terminal.router.current_mut().unwrap().draw(frame);
     })?;
     Ok(())
 }

@@ -55,7 +55,7 @@ impl Page for BrowserAuthenticate {
         }
     }
 
-    fn draw(&self, frame: &mut Frame) {
+    fn draw(&mut self, frame: &mut Frame) {
         let rect = frame.size();
         let block = Block::default()
             .title("Authenticate using a browser")

@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use super::{Api, Database, pages::Page};
+use super::{
+    pages::{not_found::NotFound, Page},
+    Api, Database,
+};
 use crate::input::EventSender;
 
 pub struct Router {
@@ -10,9 +13,10 @@ pub struct Router {
 
 impl Router {
     pub fn new() -> Self {
+        let not_found_page: Box<dyn Page> = Box::new(NotFound::new());
         Self {
             location: String::from("/"),
-            routes: HashMap::new(),
+            routes: HashMap::from_iter([("/404".to_string(), not_found_page)]),
         }
     }
 
@@ -39,7 +43,11 @@ impl Router {
             Some(cur) => cur.unmount(db, api),
             _ => {}
         }
-        self.location = location;
+        self.location = if self.routes.contains_key(&location) {
+            location
+        } else {
+            "/404".to_string()
+        };
         match self.current_mut() {
             Some(cur) => cur.mount(db, api, event_sender),
             _ => {}

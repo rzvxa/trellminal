@@ -26,7 +26,7 @@ impl Page for FirstLoad {
 
     fn unmount(&mut self, db: &Database, api: &Api) {}
 
-    fn draw(&self, frame: &mut Frame) {
+    fn draw(&mut self, frame: &mut Frame) {
         let rect = frame.size();
         let block = Block::default().title("Welcome").borders(Borders::ALL);
 
