@@ -30,15 +30,17 @@ fn db_path() -> String {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    let mut api = api::Api::new(API_KEY.to_string());
     let db = database::Database::load(db_path().as_str());
-    let api = api::Api::new(API_KEY.to_string());
     let initial_route = if db.accounts.is_empty() {
         "/first_load"
-    } else if db.active_account.is_none() {
-        "/switch_account"
-    } else {
+    } else if let Some(active_account) = &db.active_account {
+        api.auth(db.accounts.get(active_account).unwrap().token.clone());
         "/"
-    }.to_string();
+    } else {
+        "/switch_account"
+    }
+    .to_string();
 
     let (event_sender, event_receiver) = input::init();
     let mut context = ui::init(db, api, event_sender, initial_route).unwrap();
