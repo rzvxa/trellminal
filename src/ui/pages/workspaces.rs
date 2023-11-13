@@ -1,5 +1,5 @@
 use tui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, List, ListItem, ListState},
 };
@@ -8,7 +8,7 @@ use crate::api::Api;
 use crate::database::Database;
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::Frame;
-use crate::ui::{pages::Page, Operation};
+use crate::ui::{misc::layout::center_rect_with_margin, pages::Page, Operation};
 
 pub struct Workspaces {
     workspaces: Vec<String>,
@@ -19,6 +19,14 @@ use async_trait::async_trait;
 #[async_trait]
 impl Page for Workspaces {
     fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {
+        self.workspaces.clear();
+        self.workspaces.append(&mut vec![
+            "First".to_string(),
+            "Second".to_string(),
+            "Third".to_string(),
+            "Forth".to_string(),
+            "Fifth".to_string(),
+        ]);
         self.state.select(Some(0));
     }
 
@@ -28,26 +36,26 @@ impl Page for Workspaces {
         let rect = frame.size();
         let block = Block::default().title("Welcome").borders(Borders::ALL);
 
-        let list_rect = Layout::default()
-            .margin(1)
-            .direction(Direction::Horizontal)
-            .constraints([Constraint::Percentage(100)])
-            .split(rect);
+        let list_rect = center_rect_with_margin(rect, 30, 1);
 
-        let recent_boards = vec![
-            ListItem::new("First Item"),
-            ListItem::new("Second Item"),
-            ListItem::new("Third Item"),
-            ListItem::new("Forth Item"),
-            ListItem::new("Fifth Item"),
-        ];
+        let recent_boards: Vec<ListItem> = self
+            .workspaces
+            .iter()
+            .map(|w| ListItem::new(w.clone()))
+            .collect();
 
         let boards_list = List::new(recent_boards)
+            .block(
+                Block::default()
+                    .title("Select a workspace")
+                    .title_alignment(Alignment::Center)
+                    .borders(Borders::TOP),
+            )
             .highlight_style(Style::default().fg(Color::Yellow))
             .highlight_symbol("> ");
 
         frame.render_widget(block, rect);
-        frame.render_stateful_widget(boards_list, list_rect[0], &mut self.state);
+        frame.render_stateful_widget(boards_list, list_rect, &mut self.state);
     }
 
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
