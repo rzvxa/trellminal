@@ -9,7 +9,11 @@ use crate::api::{members::Members, Api};
 use crate::database::Database;
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::Frame;
-use crate::ui::{misc::layout::center_rect_with_margin, pages::Page, Operation};
+use crate::ui::{
+    misc::layout::{center_rect_with_margin, rect_with_margin_top},
+    pages::Page,
+    Operation,
+};
 
 pub struct Workspaces {
     workspaces: Vec<String>,
@@ -33,7 +37,8 @@ impl Page for Workspaces {
     fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default().title("Welcome").borders(Borders::ALL);
 
-        let list_rect = center_rect_with_margin(rect, 30, 1);
+        let list_block_rect = center_rect_with_margin(rect, 30, 1);
+        let list_rect = rect_with_margin_top(list_block_rect, 2);
 
         let recent_boards: Vec<ListItem> = self
             .workspaces
@@ -41,18 +46,18 @@ impl Page for Workspaces {
             .map(|w| ListItem::new(w.clone()))
             .collect();
 
-        let boards_list = List::new(recent_boards)
-            .block(
-                Block::default()
-                    .title("Select a workspace")
-                    .title_alignment(Alignment::Center)
-                    .borders(Borders::TOP),
-            )
+        let workspaces_block = Block::default()
+            .title("Select a workspace")
+            .title_alignment(Alignment::Center)
+            .borders(Borders::TOP);
+
+        let workspaces_list = List::new(recent_boards)
             .highlight_style(Style::default().fg(Color::Yellow))
             .highlight_symbol("> ");
 
         frame.render_widget(block, rect);
-        frame.render_stateful_widget(boards_list, list_rect, &mut self.state);
+        frame.render_widget(workspaces_block, list_block_rect);
+        frame.render_stateful_widget(workspaces_list, list_rect, &mut self.state);
     }
 
     async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
@@ -91,8 +96,7 @@ impl Workspaces {
     pub fn down(&mut self) {
         let new_index = self.state.selected().unwrap_or(0) + 1;
         if new_index < self.workspaces.len() {
-            self.state
-                .select(Some(new_index))
+            self.state.select(Some(new_index))
         }
     }
 }

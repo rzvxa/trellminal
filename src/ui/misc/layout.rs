@@ -22,3 +22,7 @@ pub fn rect_with_margin(rect: Rect, margin: u16) -> Rect {
         rect.height - margin2,
     )
 }
+
+pub fn rect_with_margin_top(rect: Rect, margin: u16) -> Rect {
+    Rect::new(rect.x, rect.y + margin, rect.width, rect.height - margin)
+}
