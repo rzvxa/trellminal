@@ -354,7 +354,7 @@ impl<'a> ManualAuthenticate<'a> {
                         None => "".to_string(),
                     };
                     api.auth(token.clone());
-                    if let Ok(user) = api.members_me().await {
+                    if let Ok(user) = api.members_me().send().await {
                         let user_id = user.id.clone();
                         db.add_user_account(user, token).unwrap();
                         db.set_active_account(user_id).unwrap();

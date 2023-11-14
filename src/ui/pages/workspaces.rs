@@ -5,7 +5,7 @@ use tui::{
     widgets::{Block, Borders, List, ListItem, ListState},
 };
 
-use crate::api::{members::Members, Api};
+use crate::api::{members::Members, organizations::Organizations, Api};
 use crate::database::Database;
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::Frame;
@@ -14,6 +14,8 @@ use crate::ui::{
     pages::Page,
     Operation,
 };
+
+use tokio::task::JoinSet;
 
 pub struct Workspaces {
     workspaces: Vec<String>,
@@ -27,8 +29,17 @@ impl Page for Workspaces {
         self.workspaces.clear();
         self.state.select(Some(0));
 
-        if let Ok(mut me) = api.members_me().await {
-            self.workspaces.append(&mut me.id_organizations);
+        if let Ok(me) = api.members_me().send().await {
+            let mut futures = JoinSet::new();
+            me.id_organizations
+                .into_iter()
+                .map(|id| api.organizations_get(id).send())
+                .for_each(|f| {
+                    futures.spawn(f);
+                });
+            while let Some(result) = futures.join_next().await {
+                self.workspaces.push(result.unwrap().unwrap().display_name);
+            }
         }
     }
 

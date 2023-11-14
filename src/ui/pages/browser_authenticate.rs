@@ -200,7 +200,7 @@ impl BrowserAuthenticate {
                 .take(url.len() - TOKEN_ROUTE_LEN)
                 .collect();
             api.auth(token.clone());
-            let user = api.members_me().await.unwrap();
+            let user = api.members_me().send().await.unwrap();
             let user_id = user.id.clone();
             db.add_user_account(user, token).unwrap();
             db.set_active_account(user_id).unwrap();
