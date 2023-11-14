@@ -7,7 +7,7 @@ use tui::{
 use tui_textarea::TextArea;
 
 use crate::api::{members::Members, Api};
-use crate::{API_KEY, APP_NAME};
+use crate::{API_KEY, APP_NAME, DARK_MODE};
 use qrcode::{EcLevel, QrCode, Version};
 
 use const_format::formatcp;
@@ -22,7 +22,7 @@ const MENU_BUTTON_LEN: u8 = 4;
 pub struct ManualAuthenticate<'a> {
     selected_button: u8,
     show_qr_code: bool,
-    qr_black_on_white: bool,
+    qr_dark_mode: bool,
     qr_selected_button: u8,
     show_enter_token_dialog: bool,
     token_textarea: TextArea<'a>,
@@ -200,7 +200,7 @@ impl<'a> ManualAuthenticate<'a> {
         Self {
             selected_button: 0,
             show_qr_code: false,
-            qr_black_on_white: true,
+            qr_dark_mode: DARK_MODE,
             qr_selected_button: 0,
             show_enter_token_dialog: false,
             token_textarea: TextArea::new(vec![]),
@@ -258,11 +258,11 @@ impl<'a> ManualAuthenticate<'a> {
             ])
             .split(btn_line[1]);
 
-        let colors = match self.qr_black_on_white {
+        let colors = match self.qr_dark_mode {
             true => ("██", "  "),
             false => ("  ", "██"),
         };
-        let qr_mode = match self.qr_black_on_white {
+        let qr_mode = match self.qr_dark_mode {
             true => "dark theme terminals",
             false => "light theme terminals",
         };
@@ -403,14 +403,14 @@ impl<'a> ManualAuthenticate<'a> {
             Event::Input(event) => match event.code {
                 KeyCode::Char('k') => self.show_qr_code = false,
                 KeyCode::Char('t') | KeyCode::Char('T') => {
-                    self.qr_black_on_white = !self.qr_black_on_white
+                    self.qr_dark_mode = !self.qr_dark_mode
                 }
                 KeyCode::Left | KeyCode::Char('h') => self.qr_selected_button = 0,
                 KeyCode::Right | KeyCode::Char('l') => self.qr_selected_button = 1,
                 KeyCode::Esc => self.show_qr_code = false,
                 KeyCode::Enter => match self.qr_selected_button {
                     0 => self.show_qr_code = false,
-                    1 => self.qr_black_on_white = !self.qr_black_on_white,
+                    1 => self.qr_dark_mode = !self.qr_dark_mode,
                     _ => {}
                 },
                 _ => {}
