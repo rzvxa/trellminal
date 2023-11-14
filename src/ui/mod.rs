@@ -19,9 +19,10 @@ use std::{
 };
 use tui::{backend::CrosstermBackend, Frame as TFrame, Terminal};
 
+use misc::status_bar::StatusBar;
 use pages::{
     authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
-    home::Home, manual_authenticate::ManualAuthenticate, workspaces::Workspaces,
+    home::Home, manual_authenticate::ManualAuthenticate, workspaces::Workspaces, Page,
 };
 
 type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
@@ -29,6 +30,7 @@ type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
 pub enum Operation {
     None,
     Navigate(String),
+    Consume,
     Exit,
 }
 
@@ -56,7 +58,14 @@ pub async fn init(
         )
         .route("/workspaces".to_string(), Workspaces::new())
         .route("/".to_string(), Home::new());
-    let mut context = Context::new(terminal, db, api, event_sender.clone(), router);
+    let mut context = Context::new(
+        terminal,
+        db,
+        api,
+        event_sender.clone(),
+        router,
+        StatusBar::new(),
+    );
     context
         .router
         .navigate(
@@ -69,28 +78,85 @@ pub async fn init(
     Ok(context)
 }
 
-pub async fn update(terminal: &mut Context, event: Event) -> Result<bool, Box<dyn Error>> {
-    match terminal
-        .router
-        .current_mut()
-        .unwrap()
-        .update(event, &mut terminal.db, &mut terminal.api)
-        .await
-    {
-        Operation::Navigate(loc) => {
-            terminal
-                .router
-                .navigate(
-                    loc,
-                    &terminal.db,
-                    &terminal.api,
-                    terminal.event_sender.clone(),
-                )
-                .await;
-            Ok(true)
+struct StatusBarUpdateResult {
+    consumed: bool,
+    exit_requested: bool,
+}
+
+impl StatusBarUpdateResult {
+    fn consume() -> Self {
+        Self {
+            consumed: true,
+            exit_requested: false,
         }
-        Operation::Exit => Ok(false),
-        Operation::None => Ok(true),
+    }
+
+    fn pass() -> Self {
+        Self {
+            consumed: false,
+            exit_requested: false,
+        }
+    }
+
+    fn exit() -> Self {
+        Self {
+            consumed: true,
+            exit_requested: true,
+        }
+    }
+}
+
+async fn handle_status_bar_update(
+    context: &mut Context,
+    operation: Operation,
+) -> StatusBarUpdateResult {
+    match operation {
+        Operation::Navigate(loc) => {
+            context
+                .router
+                .navigate(loc, &context.db, &context.api, context.event_sender.clone())
+                .await;
+            StatusBarUpdateResult::consume()
+        }
+        Operation::Exit => StatusBarUpdateResult::exit(),
+        _ => StatusBarUpdateResult::pass(),
+    }
+}
+
+async fn handle_page_update(context: &mut Context, operation: Operation) -> bool {
+    match operation {
+        Operation::Navigate(loc) => {
+            context
+                .router
+                .navigate(loc, &context.db, &context.api, context.event_sender.clone())
+                .await;
+            true
+        }
+        Operation::Exit => false,
+        Operation::Consume => true,
+        Operation::None => true,
+    }
+}
+
+pub async fn update(context: &mut Context, event: Event) -> Result<bool, Box<dyn Error>> {
+    let status_update = {
+        context
+            .status_bar
+            .update(&event, &mut context.db, &mut context.api)
+            .await
+    };
+    let status_update_result = { handle_status_bar_update(context, status_update).await };
+
+    if status_update_result.consumed {
+        Ok(!status_update_result.exit_requested)
+    } else {
+        let update = context
+            .router
+            .current_mut()
+            .unwrap()
+            .update(event, &mut context.db, &mut context.api)
+            .await;
+        Ok(handle_page_update(context, update).await)
     }
 }
 
@@ -107,7 +173,9 @@ pub fn draw(terminal: &mut Context) -> Result<(), Box<dyn Error>> {
             .current_mut()
             .unwrap()
             .draw(frame, layout[0]);
-        misc::status_bar::draw_status_bar(frame, layout[1], &terminal.db, &terminal.api);
+        terminal
+            .status_bar
+            .draw(frame, layout[1], &terminal.db, &terminal.api);
     })?;
     Ok(())
 }

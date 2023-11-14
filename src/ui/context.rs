@@ -2,6 +2,7 @@ use super::Router;
 use crate::api::Api;
 use crate::database::Database;
 use crate::input::EventSender;
+use crate::ui::misc::status_bar::StatusBar;
 use std::io;
 use tui::{backend::CrosstermBackend, Terminal};
 
@@ -13,6 +14,7 @@ pub struct Context {
     pub api: Api,
     pub event_sender: EventSender,
     pub router: Router,
+    pub status_bar: StatusBar,
 }
 
 impl<'a> Context {
@@ -22,6 +24,7 @@ impl<'a> Context {
         api: Api,
         event_sender: EventSender,
         router: Router,
+        status_bar: StatusBar,
     ) -> Self {
         Self {
             internal,
@@ -29,6 +32,7 @@ impl<'a> Context {
             api,
             event_sender,
             router,
+            status_bar,
         }
     }
 
