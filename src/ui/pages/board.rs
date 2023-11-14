@@ -23,8 +23,7 @@ impl Page for Home {
 
     async fn unmount(&mut self, db: &Database, api: &Api) {}
 
-    fn draw(&mut self, frame: &mut Frame) {
-        let rect = frame.size();
+    fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default().title("Trellminal").borders(Borders::ALL);
 
         let main_layout = Layout::default()

@@ -30,8 +30,7 @@ impl Page for Workspaces {
 
     async fn unmount(&mut self, db: &Database, api: &Api) {}
 
-    fn draw(&mut self, frame: &mut Frame) {
-        let rect = frame.size();
+    fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default().title("Welcome").borders(Borders::ALL);
 
         let list_rect = center_rect_with_margin(rect, 30, 1);

@@ -1,14 +1,14 @@
 use tui::{
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
 use crate::api::Api;
 use crate::database::Database;
-use crate::input::{Event, KeyCode, EventSender};
+use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::Frame;
-use crate::ui::{Operation, pages::Page};
+use crate::ui::{pages::Page, Operation};
 
 const WELCOME_TEXT: &str = "Hello, World!
 Welcome to the Trellminal, It's a small and lightweight terminal client for Trello written in Rust.
@@ -26,8 +26,7 @@ impl Page for FirstLoad {
 
     async fn unmount(&mut self, db: &Database, api: &Api) {}
 
-    fn draw(&mut self, frame: &mut Frame) {
-        let rect = frame.size();
+    fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default().title("Welcome").borders(Borders::ALL);
 
         let main_layout = Layout::default()

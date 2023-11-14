@@ -39,8 +39,7 @@ impl<'a> Page for ManualAuthenticate<'a> {
 
     async fn unmount(&mut self, db: &Database, api: &Api) {}
 
-    fn draw(&mut self, frame: &mut Frame) {
-        let rect = frame.size();
+    fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default()
             .title("Authenticate manually")
             .borders(Borders::ALL);

@@ -1,5 +1,5 @@
 use tui::{
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
@@ -55,8 +55,7 @@ impl Page for BrowserAuthenticate {
         }
     }
 
-    fn draw(&mut self, frame: &mut Frame) {
-        let rect = frame.size();
+    fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default()
             .title("Authenticate using a browser")
             .borders(Borders::ALL);

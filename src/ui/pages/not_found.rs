@@ -1,5 +1,5 @@
 use tui::{
-    layout::{Alignment, Constraint, Direction, Layout},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, Paragraph, Wrap},
 };
@@ -7,7 +7,7 @@ use tui::{
 use crate::api::Api;
 use crate::database::Database;
 use crate::input::{Event, EventSender, KeyCode};
-use crate::ui::{Frame, Operation, pages::Page};
+use crate::ui::{pages::Page, Frame, Operation};
 
 const MENU_BUTTON_LEN: u8 = 3;
 
@@ -22,8 +22,7 @@ impl Page for NotFound {
 
     async fn unmount(&mut self, db: &Database, api: &Api) {}
 
-    fn draw(&mut self, frame: &mut Frame) {
-        let rect = frame.size();
+    fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default().title("NotFound").borders(Borders::ALL);
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
@@ -144,4 +143,3 @@ impl NotFound {
         true
     }
 }
-

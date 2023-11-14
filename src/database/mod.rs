@@ -76,6 +76,13 @@ impl Database {
         Ok(())
     }
 
+    pub fn active_account(&self) -> Option<&Account> {
+        match &self.active_account {
+            Some(active_account) => self.accounts.get(active_account),
+            None => None
+        }
+    }
+
     pub fn set_active_account(&mut self, id: UserId) -> Result<(), DatabaseError> {
         if self.accounts.contains_key(&id) {
             self.active_account = Some(id);

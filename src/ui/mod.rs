@@ -24,8 +24,6 @@ use pages::{
     home::Home, manual_authenticate::ManualAuthenticate, workspaces::Workspaces,
 };
 
-pub use tui::layout::Rect;
-
 type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
 
 pub enum Operation {
@@ -59,12 +57,15 @@ pub async fn init(
         .route("/workspaces".to_string(), Workspaces::new())
         .route("/".to_string(), Home::new());
     let mut context = Context::new(terminal, db, api, event_sender.clone(), router);
-    context.router.navigate(
-        String::from(initial_route),
-        &context.db,
-        &context.api,
-        event_sender,
-    ).await;
+    context
+        .router
+        .navigate(
+            String::from(initial_route),
+            &context.db,
+            &context.api,
+            event_sender,
+        )
+        .await;
     Ok(context)
 }
 
@@ -77,12 +78,15 @@ pub async fn update(terminal: &mut Context, event: Event) -> Result<bool, Box<dy
         .await
     {
         Operation::Navigate(loc) => {
-            terminal.router.navigate(
-                loc,
-                &terminal.db,
-                &terminal.api,
-                terminal.event_sender.clone(),
-            ).await;
+            terminal
+                .router
+                .navigate(
+                    loc,
+                    &terminal.db,
+                    &terminal.api,
+                    terminal.event_sender.clone(),
+                )
+                .await;
             Ok(true)
         }
         Operation::Exit => Ok(false),
@@ -92,7 +96,18 @@ pub async fn update(terminal: &mut Context, event: Event) -> Result<bool, Box<dy
 
 pub fn draw(terminal: &mut Context) -> Result<(), Box<dyn Error>> {
     terminal.internal.draw(|frame| {
-        terminal.router.current_mut().unwrap().draw(frame);
+        let layout = tui::layout::Layout::default()
+            .constraints([
+                tui::layout::Constraint::Min(1),
+                tui::layout::Constraint::Length(1),
+            ])
+            .split(frame.size());
+        terminal
+            .router
+            .current_mut()
+            .unwrap()
+            .draw(frame, layout[0]);
+        misc::status_bar::draw_status_bar(frame, layout[1], &terminal.db, &terminal.api);
     })?;
     Ok(())
 }
