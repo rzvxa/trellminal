@@ -6,13 +6,13 @@ use tui::{
 
 use tui_textarea::TextArea;
 
-use crate::api::{members::Members, Api};
+use crate::api::members::Members;
 use crate::{API_KEY, APP_NAME, DARK_MODE};
 use qrcode::{EcLevel, QrCode, Version};
+use super::{Api, Database};
 
 use const_format::formatcp;
 
-use crate::database::Database;
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::{misc::logo, Frame};
 use crate::ui::{Operation, pages::Page};
@@ -35,9 +35,9 @@ use async_trait::async_trait;
 
 #[async_trait]
 impl<'a> Page for ManualAuthenticate<'a> {
-    async fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {}
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {}
 
-    async fn unmount(&mut self, db: &Database, api: &Api) {}
+    async fn unmount(&mut self, db: Database, api: Api) {}
 
     fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default()
@@ -146,7 +146,7 @@ impl<'a> Page for ManualAuthenticate<'a> {
         }
     }
 
-    async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
+    async fn update(&mut self, event: Event, db: Database, api: Api) -> Operation {
         if self.show_enter_token_dialog {
             self.enter_token_dialog_update(event, db, api).await
         } else if self.show_qr_code {
@@ -343,8 +343,8 @@ impl<'a> ManualAuthenticate<'a> {
     async fn enter_token_dialog_update(
         &mut self,
         event: Event,
-        db: &mut Database,
-        api: &mut Api,
+        db: Database,
+        api: Api,
     ) -> Operation {
         match event {
             Event::Input(key_event) => match key_event.code {
@@ -353,12 +353,19 @@ impl<'a> ManualAuthenticate<'a> {
                         Some(token) => token.clone(),
                         None => "".to_string(),
                     };
-                    api.auth(token.clone());
-                    if let Ok(user) = api.members_me().send().await {
+                    let members_req = {
+                        let mut api = api.lock().unwrap();
+                        api.auth(token.clone());
+                        api.members_me()
+                    };
+                    if let Ok(user) = members_req.send().await {
                         let user_id = user.id.clone();
-                        db.add_user_account(user, token).unwrap();
-                        db.set_active_account(user_id).unwrap();
-                        db.first_load = false;
+                        {
+                            let mut db = db.lock().unwrap();
+                            db.add_user_account(user, token).unwrap();
+                            db.set_active_account(user_id).unwrap();
+                            db.first_load = false;
+                        }
                         self.set_show_enter_token_dialog(false);
                         Operation::Navigate("/".to_string())
                     } else {

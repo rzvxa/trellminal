@@ -29,7 +29,7 @@ fn db_path() -> String {
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() -> Result<(), Box<dyn Error>> {
     let mut api = api::Api::new(API_KEY.to_string());
     let db = database::Database::load(db_path().as_str());
@@ -59,16 +59,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
 
+
+        ui::draw(&mut context).await.unwrap();
+
         if !ui::update(&mut context, event).await.unwrap_or(false) {
             break;
         }
-
-        ui::draw(&mut context).unwrap();
     }
 
     ui::fini(&mut context).unwrap();
 
-    context.db.save().expect("Failed to sync database");
+    context
+        .db
+        .lock()
+        .unwrap()
+        .save()
+        .expect("Failed to sync database");
 
     Ok(())
 }

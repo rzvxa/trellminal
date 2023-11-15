@@ -4,8 +4,7 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use crate::api::Api;
-use crate::database::Database;
+use super::{Api, Database};
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::Frame;
 use crate::ui::{pages::Page, Operation};
@@ -22,9 +21,9 @@ pub struct FirstLoad {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for FirstLoad {
-    async fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {}
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {}
 
-    async fn unmount(&mut self, db: &Database, api: &Api) {}
+    async fn unmount(&mut self, db: Database, api: Api) {}
 
     fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default().title("Welcome").borders(Borders::ALL);
@@ -86,7 +85,7 @@ impl Page for FirstLoad {
         frame.render_widget(btn_iter.next().unwrap(), btn_layout[0]);
     }
 
-    async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
+    async fn update(&mut self, event: Event, db: Database, api: Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => Operation::Exit,

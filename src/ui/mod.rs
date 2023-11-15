@@ -3,8 +3,8 @@ mod misc;
 mod pages;
 mod router;
 
-use crate::api::Api;
-use crate::database::Database;
+use crate::api::Api as RawApi;
+use crate::database::Database as RawDatabase;
 use crate::input::{Event, EventSender};
 use context::Context;
 use crossterm::{
@@ -16,6 +16,7 @@ use router::Router;
 use std::{
     error::Error,
     io::{self, Stdout},
+    sync::{Arc, Mutex},
 };
 use tui::{backend::CrosstermBackend, Frame as TFrame, Terminal};
 
@@ -27,6 +28,9 @@ use pages::{
 
 type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
 
+type Database = Arc<Mutex<RawDatabase>>;
+type Api = Arc<Mutex<RawApi>>;
+
 pub enum Operation {
     None,
     Navigate(String),
@@ -35,8 +39,8 @@ pub enum Operation {
 }
 
 pub async fn init(
-    db: Database,
-    api: Api,
+    db: RawDatabase,
+    api: RawApi,
     event_sender: EventSender,
     initial_route: String,
 ) -> Result<Context, Box<dyn Error>> {
@@ -58,7 +62,7 @@ pub async fn init(
         )
         .route("/workspaces".to_string(), Workspaces::new())
         .route("/".to_string(), Home::new());
-    let mut context = Context::new(
+    let context = Context::new(
         terminal,
         db,
         api,
@@ -66,14 +70,13 @@ pub async fn init(
         router,
         StatusBar::new(),
     );
+    let db = context.db.clone();
+    let api = context.api.clone();
     context
         .router
-        .navigate(
-            String::from(initial_route),
-            &context.db,
-            &context.api,
-            event_sender,
-        )
+        .lock()
+        .await
+        .navigate(String::from(initial_route), db, api, event_sender)
         .await;
     Ok(context)
 }
@@ -112,9 +115,13 @@ async fn handle_status_bar_update(
 ) -> StatusBarUpdateResult {
     match operation {
         Operation::Navigate(loc) => {
+            let db = context.db.clone();
+            let api = context.api.clone();
             context
                 .router
-                .navigate(loc, &context.db, &context.api, context.event_sender.clone())
+                .lock()
+                .await
+                .navigate(loc, db, api, context.event_sender.clone())
                 .await;
             StatusBarUpdateResult::consume()
         }
@@ -126,10 +133,19 @@ async fn handle_status_bar_update(
 async fn handle_page_update(context: &mut Context, operation: Operation) -> bool {
     match operation {
         Operation::Navigate(loc) => {
-            context
-                .router
-                .navigate(loc, &context.db, &context.api, context.event_sender.clone())
-                .await;
+            tokio::spawn({
+                let db = context.db.clone();
+                let api = context.api.clone();
+                let router = context.router.clone();
+                let event_sender = context.event_sender.clone();
+                async move {
+                    router
+                        .lock()
+                        .await
+                        .navigate(loc, db, api, event_sender)
+                        .await
+                }
+            });
             true
         }
         Operation::Exit => false,
@@ -142,7 +158,7 @@ pub async fn update(context: &mut Context, event: Event) -> Result<bool, Box<dyn
     let status_update = {
         context
             .status_bar
-            .update(&event, &mut context.db, &mut context.api)
+            .update(&event, context.db.clone(), context.api.clone())
             .await
     };
     let status_update_result = { handle_status_bar_update(context, status_update).await };
@@ -152,41 +168,40 @@ pub async fn update(context: &mut Context, event: Event) -> Result<bool, Box<dyn
     } else {
         let update = context
             .router
+            .lock()
+            .await
             .current_mut()
             .unwrap()
-            .update(event, &mut context.db, &mut context.api)
+            .update(event, context.db.clone(), context.api.clone())
             .await;
         Ok(handle_page_update(context, update).await)
     }
 }
 
-pub fn draw(terminal: &mut Context) -> Result<(), Box<dyn Error>> {
-    terminal.internal.draw(|frame| {
+pub async fn draw(context: &mut Context) -> Result<(), Box<dyn Error>> {
+    let mut router = context.router.lock().await;
+    context.internal.draw(|frame| {
         let layout = tui::layout::Layout::default()
             .constraints([
                 tui::layout::Constraint::Min(1),
                 tui::layout::Constraint::Length(1),
             ])
             .split(frame.size());
-        terminal
-            .router
-            .current_mut()
-            .unwrap()
-            .draw(frame, layout[0]);
-        terminal
+        router.current_mut().unwrap().draw(frame, layout[0]);
+        context
             .status_bar
-            .draw(frame, layout[1], &terminal.db, &terminal.api);
+            .draw(frame, layout[1], context.db.clone(), context.api.clone());
     })?;
     Ok(())
 }
 
-pub fn fini(terminal: &mut Context) -> Result<(), Box<dyn Error>> {
+pub fn fini(context: &mut Context) -> Result<(), Box<dyn Error>> {
     disable_raw_mode()?;
     execute!(
-        terminal.internal.backend_mut(),
+        context.internal.backend_mut(),
         LeaveAlternateScreen,
         DisableMouseCapture
     )?;
-    terminal.internal.show_cursor()?;
+    context.internal.show_cursor()?;
     Ok(())
 }

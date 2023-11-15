@@ -4,19 +4,19 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use crate::api::{members::Members, Api};
+use crate::api::members::Members;
 use crate::{API_KEY, APP_NAME};
 
 use const_format::formatcp;
 use webbrowser;
 
-use crate::database::Database;
+use super::{Api, Database};
 use crate::input::{
     http_server::{HttpServer, Request, RespondWithHtml},
     Event, EventSender, KeyCode,
 };
 use crate::ui::{misc::logo, Frame};
-use crate::ui::{Operation, pages::Page};
+use crate::ui::{pages::Page, Operation};
 
 pub struct BrowserAuthenticate {
     web_server: Option<HttpServer>,
@@ -45,11 +45,11 @@ fn request_validator(req: &Request) -> bool {
 
 #[async_trait]
 impl Page for BrowserAuthenticate {
-    async fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {
         self.web_server = Some(HttpServer::new(event_sender, "9999", request_validator));
     }
 
-    async fn unmount(&mut self, db: &Database, api: &Api) {
+    async fn unmount(&mut self, db: Database, api: Api) {
         if self.web_server.is_some() {
             self.web_server = None;
         }
@@ -145,7 +145,7 @@ impl Page for BrowserAuthenticate {
         frame.render_widget(btn_iter.next().unwrap(), btn_layout[2]);
     }
 
-    async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
+    async fn update(&mut self, event: Event, db: Database, api: Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('o') | KeyCode::Char('O') => {
@@ -188,7 +188,7 @@ impl BrowserAuthenticate {
         }
     }
 
-    async fn dispatch_request(&self, req: Request, db: &mut Database, api: &mut Api) -> Operation {
+    async fn dispatch_request(&self, req: Request, db: Database, api: Api) -> Operation {
         let url = req.url();
         if url.starts_with(AUTH_ROUTE) {
             req.respond_with_html("auth.html").unwrap();
@@ -199,12 +199,19 @@ impl BrowserAuthenticate {
                 .skip(TOKEN_ROUTE_LEN)
                 .take(url.len() - TOKEN_ROUTE_LEN)
                 .collect();
-            api.auth(token.clone());
-            let user = api.members_me().send().await.unwrap();
+            let user_req = {
+                let mut api = api.lock().unwrap();
+                api.auth(token.clone());
+                api.members_me()
+            }; // unlock api
+            let user = user_req.send().await.unwrap();
             let user_id = user.id.clone();
-            db.add_user_account(user, token).unwrap();
-            db.set_active_account(user_id).unwrap();
-            db.first_load = false;
+            {
+                let mut db = db.lock().unwrap();
+                db.add_user_account(user, token).unwrap();
+                db.set_active_account(user_id).unwrap();
+                db.first_load = false;
+            } // unlock db
             req.respond_with_html("auth_success.html").unwrap();
             Operation::Navigate("/".to_string())
         } else {

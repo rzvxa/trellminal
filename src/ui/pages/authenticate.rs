@@ -4,8 +4,7 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use crate::api::Api;
-use crate::database::Database;
+use super::{Api, Database};
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::misc::logo;
 use crate::ui::{Frame, Operation, pages::Page};
@@ -19,9 +18,9 @@ pub struct Authenticate {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Authenticate {
-    async fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {}
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {}
 
-    async fn unmount(&mut self, db: &Database, api: &Api) {}
+    async fn unmount(&mut self, db: Database, api: Api) {}
 
     fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default().title("Authenticate").borders(Borders::ALL);
@@ -108,7 +107,7 @@ impl Page for Authenticate {
         frame.render_widget(btn_iter.next().unwrap(), btn_layout[3]);
     }
 
-    async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
+    async fn update(&mut self, event: Event, db: Database, api: Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('a') => Operation::Navigate(String::from("/authenticate/browser")),

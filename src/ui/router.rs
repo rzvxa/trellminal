@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use super::{
     pages::{not_found::NotFound, Page},
@@ -35,23 +36,26 @@ impl Router {
     pub async fn navigate(
         &mut self,
         location: String,
-        db: &Database,
-        api: &Api,
+        db: Database,
+        api: Api,
         event_sender: EventSender,
     ) {
-        match self.current_mut() {
-            Some(cur) => cur.unmount(db, api).await,
-            _ => {}
-        }
-        self.location = if self.routes.contains_key(&location) {
+        self.location = "/loading".to_string();
+        let new_location = if self.routes.contains_key(&location) {
             location
         } else {
             "/404".to_string()
         };
+        let clone_location = new_location.clone();
         match self.current_mut() {
+            Some(cur) => cur.unmount(db.clone(), api.clone()).await,
+            _ => {}
+        }
+        match self.routes.get_mut(&new_location) {
             Some(cur) => cur.mount(db, api, event_sender).await,
             _ => {}
         }
+        self.location = clone_location;
     }
 
     pub fn current(&self) -> Option<&dyn Page> {

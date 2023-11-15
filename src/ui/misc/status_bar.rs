@@ -21,8 +21,15 @@ impl StatusBar {
         Self {}
     }
 
-    pub fn draw(&mut self, frame: &mut Frame, rect: Rect, db: &Database, api: &Api) {
-        let username = db.active_account().unwrap().username.clone();
+    pub fn draw(&mut self, frame: &mut Frame, rect: Rect, db: Database, api: Api) {
+        let username = {
+            let db = db.lock().unwrap();
+            let active_account = db.active_account();
+            match active_account {
+                Some(account) => account.username.clone(),
+                None => "".to_string(),
+            }
+        };
         let layout = Layout::default()
             .horizontal_margin(1)
             .direction(Direction::Horizontal)
@@ -47,7 +54,7 @@ impl StatusBar {
         frame.render_widget(username, layout[1]);
     }
 
-    pub async fn update(&mut self, event: &Event, db: &mut Database, api: &mut Api) -> Operation {
+    pub async fn update(&mut self, event: &Event, db: Database, api: Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char(':') => Operation::Consume,

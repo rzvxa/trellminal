@@ -5,8 +5,8 @@ use tui::{
     widgets::{Block, Borders, List, ListItem, ListState},
 };
 
-use crate::api::{members::Members, organizations::Organizations, Api};
-use crate::database::Database;
+use super::{Api, Database};
+use crate::api::{members::Members, organizations::Organizations};
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::Frame;
 use crate::ui::{
@@ -25,25 +25,32 @@ pub struct Workspaces {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Workspaces {
-    async fn mount(&mut self, db: &Database, api: &Api, event_sender: EventSender) {
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {
         self.workspaces.clear();
         self.state.select(Some(0));
 
-        if let Ok(me) = api.members_me().send().await {
+        let members_req = {
+            let api = api.lock().unwrap();
+            api.members_me()
+        };
+        if let Ok(me) = members_req.send().await {
             let mut futures = JoinSet::new();
-            me.id_organizations
-                .into_iter()
-                .map(|id| api.organizations_get(id).send())
-                .for_each(|f| {
-                    futures.spawn(f);
-                });
+            {
+                let api = api.lock().unwrap();
+                me.id_organizations
+                    .into_iter()
+                    .map(|id| api.organizations_get(id).send())
+                    .for_each(|f| {
+                        futures.spawn(f);
+                    });
+            }
             while let Some(result) = futures.join_next().await {
                 self.workspaces.push(result.unwrap().unwrap().display_name);
             }
         }
     }
 
-    async fn unmount(&mut self, db: &Database, api: &Api) {}
+    async fn unmount(&mut self, db: Database, api: Api) {}
 
     fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default().title("Welcome").borders(Borders::ALL);
@@ -71,7 +78,7 @@ impl Page for Workspaces {
         frame.render_stateful_widget(workspaces_list, list_rect, &mut self.state);
     }
 
-    async fn update(&mut self, event: Event, db: &mut Database, api: &mut Api) -> Operation {
+    async fn update(&mut self, event: Event, db: Database, api: Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Up | KeyCode::Char('k') => {

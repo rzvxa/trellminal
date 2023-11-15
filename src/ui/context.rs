@@ -5,16 +5,18 @@ use crate::input::EventSender;
 use crate::ui::misc::status_bar::StatusBar;
 use std::io;
 use tui::{backend::CrosstermBackend, Terminal};
+use std::sync::{Arc, Mutex};
+use tokio::sync::Mutex as TkMotex;
 
 type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
 
 pub struct Context {
     pub internal: InternalTerminal,
-    pub db: Database,
-    pub api: Api,
-    pub event_sender: EventSender,
-    pub router: Router,
+    pub db: Arc<Mutex<Database>>,
+    pub api: Arc<Mutex<Api>>,
+    pub router: Arc<TkMotex<Router>>,
     pub status_bar: StatusBar,
+    pub event_sender: EventSender,
 }
 
 impl<'a> Context {
@@ -28,19 +30,11 @@ impl<'a> Context {
     ) -> Self {
         Self {
             internal,
-            db,
-            api,
+            db: Arc::new(Mutex::new(db)),
+            api: Arc::new(Mutex::new(api)),
+            router: Arc::new(TkMotex::new(router)),
             event_sender,
-            router,
             status_bar,
         }
-    }
-
-    pub fn router(&self) -> &Router {
-        &self.router
-    }
-
-    pub fn router_mut(&mut self) -> &mut Router {
-        &mut self.router
     }
 }
