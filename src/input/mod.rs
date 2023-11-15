@@ -9,6 +9,8 @@ use std::{
 };
 use tui_textarea::{Input, Key};
 
+use crate::DETLA_TIME;
+
 pub use http_server::Request;
 
 pub use crossterm::event::KeyCode;
@@ -63,7 +65,7 @@ impl Into<Input> for Event {
 
 pub fn init() -> (EventSender, EventReceiver) {
     let (tx, rx) = mpsc::channel();
-    let tick_rate = Duration::from_millis(200);
+    let tick_rate = Duration::from_millis(DETLA_TIME);
     let input_tx = tx.clone();
     thread::spawn(move || {
         let mut last_tick = Instant::now();

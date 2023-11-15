@@ -16,9 +16,9 @@ use router::Router;
 use std::{
     error::Error,
     io::{self, Stdout},
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, MutexGuard},
 };
-use tui::{backend::CrosstermBackend, Frame as TFrame, Terminal};
+use tui::{backend::CrosstermBackend, layout, widgets, Frame as TFrame, Terminal};
 
 use misc::status_bar::StatusBar;
 use pages::{
@@ -143,7 +143,7 @@ async fn handle_page_update(context: &mut Context, operation: Operation) -> bool
                         .lock()
                         .await
                         .navigate(loc, db, api, event_sender)
-                        .await
+                        .await;
                 }
             });
             true
@@ -166,33 +166,55 @@ pub async fn update(context: &mut Context, event: Event) -> Result<bool, Box<dyn
     if status_update_result.consumed {
         Ok(!status_update_result.exit_requested)
     } else {
-        let update = context
-            .router
-            .lock()
-            .await
-            .current_mut()
-            .unwrap()
-            .update(event, context.db.clone(), context.api.clone())
-            .await;
+        let update = if let Ok(mut router) = context.router.try_lock() {
+            router
+                .current_mut()
+                .unwrap()
+                .update(event, context.db.clone(), context.api.clone())
+                .await
+        } else {
+            Operation::None
+        };
         Ok(handle_page_update(context, update).await)
     }
 }
 
 pub async fn draw(context: &mut Context) -> Result<(), Box<dyn Error>> {
-    let mut router = context.router.lock().await;
+    let router = context.router.try_lock();
     context.internal.draw(|frame| {
-        let layout = tui::layout::Layout::default()
-            .constraints([
-                tui::layout::Constraint::Min(1),
-                tui::layout::Constraint::Length(1),
-            ])
+        let layout = layout::Layout::default()
+            .constraints([layout::Constraint::Min(1), layout::Constraint::Length(1)])
             .split(frame.size());
-        router.current_mut().unwrap().draw(frame, layout[0]);
+        if let Ok(mut router) = router {
+            router.current_mut().unwrap().draw(frame, layout[0]);
+        } else {
+            draw_loading(frame, layout[0]);
+        }
         context
             .status_bar
             .draw(frame, layout[1], context.db.clone(), context.api.clone());
     })?;
     Ok(())
+}
+
+fn draw_loading(frame: &mut Frame, rect: layout::Rect) {
+    let layout = layout::Layout::default()
+        .direction(layout::Direction::Vertical)
+        .constraints([
+            layout::Constraint::Percentage(70),
+            layout::Constraint::Length(1),
+        ])
+        .split(frame.size());
+    let logo = widgets::Paragraph::new(misc::logo::get(&rect))
+        .block(widgets::Block::default())
+        .wrap(widgets::Wrap { trim: true })
+        .alignment(layout::Alignment::Center);
+    let text = widgets::Paragraph::new(format!("{} Loading...", misc::loading::braille(&rect)))
+        .block(widgets::Block::default())
+        .wrap(widgets::Wrap { trim: true })
+        .alignment(layout::Alignment::Center);
+    frame.render_widget(logo, layout[0]);
+    frame.render_widget(text, layout[1]);
 }
 
 pub fn fini(context: &mut Context) -> Result<(), Box<dyn Error>> {

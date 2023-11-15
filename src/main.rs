@@ -11,6 +11,8 @@ use std::error::Error;
 const API_KEY: &str = "bbc638e415942dcd32cf8b4f07f1aed9";
 const APP_NAME: &str = "Trellminal";
 const DARK_MODE: bool = true;
+const FRAME_RATE: u8 = 10;
+const DETLA_TIME: u64 = 1000 / (FRAME_RATE as u64);
 
 fn home_dir() -> Option<String> {
     match _home_dir() {
@@ -60,11 +62,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
         }
 
 
-        ui::draw(&mut context).await.unwrap();
-
         if !ui::update(&mut context, event).await.unwrap_or(false) {
             break;
         }
+
+        ui::draw(&mut context).await.unwrap();
     }
 
     ui::fini(&mut context).unwrap();
