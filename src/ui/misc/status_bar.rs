@@ -9,7 +9,7 @@ use tui::{
 };
 use tui_textarea::TextArea;
 
-const HELP_LABEL_TEXT: &str = "Press ? to get help";
+const HELP_LABEL_TEXT: &str = "Write :help to get help";
 const PRIMARY_LABEL_TEXT: &str = "Trellminal {version}";
 
 const BG_COLOR: Color = Color::White;
@@ -132,6 +132,7 @@ impl<'a> StatusBar<'a> {
         let command = self.command();
         match &*command {
             "q" | "qa" | "q!" => Operation::Exit,
+            "help" => Operation::Navigate("/help".to_string()),
             _ => Operation::Consume,
         }
     }
