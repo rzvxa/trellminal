@@ -10,24 +10,24 @@ use tui::{backend::CrosstermBackend, Terminal};
 
 type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
 
-pub struct Context {
+pub struct Context<'a> {
     pub internal: InternalTerminal,
     pub db: Arc<Mutex<Database>>,
     pub api: Arc<Mutex<Api>>,
     pub router: Arc<TkMutex<Router>>,
-    pub status_bar: StatusBar,
+    pub status_bar: StatusBar<'a>,
     pub loading: Loading,
     pub event_sender: EventSender,
 }
 
-impl<'a> Context {
+impl<'a> Context<'a> {
     pub fn new(
         internal: InternalTerminal,
         db: Database,
         api: Api,
         event_sender: EventSender,
         router: Router,
-        status_bar: StatusBar,
+        status_bar: StatusBar<'a>,
         loading: Loading,
     ) -> Self {
         Self {

@@ -38,12 +38,12 @@ pub enum Operation {
     Exit,
 }
 
-pub async fn init(
+pub async fn init<'a>(
     db: RawDatabase,
     api: RawApi,
     event_sender: EventSender,
     initial_route: String,
-) -> Result<Context, Box<dyn Error>> {
+) -> Result<Context<'a>, Box<dyn Error>> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
@@ -110,8 +110,8 @@ impl StatusBarUpdateResult {
     }
 }
 
-async fn handle_status_bar_update(
-    context: &mut Context,
+async fn handle_status_bar_update<'a>(
+    context: &mut Context<'a>,
     operation: Operation,
 ) -> StatusBarUpdateResult {
     match operation {
@@ -126,12 +126,13 @@ async fn handle_status_bar_update(
                 .await;
             StatusBarUpdateResult::consume()
         }
+        Operation::Consume => StatusBarUpdateResult::consume(),
         Operation::Exit => StatusBarUpdateResult::exit(),
         _ => StatusBarUpdateResult::pass(),
     }
 }
 
-async fn handle_page_update(context: &mut Context, operation: Operation) -> bool {
+async fn handle_page_update<'a>(context: &mut Context<'a>, operation: Operation) -> bool {
     match operation {
         Operation::Navigate(loc) => {
             tokio::spawn({
@@ -155,7 +156,7 @@ async fn handle_page_update(context: &mut Context, operation: Operation) -> bool
     }
 }
 
-pub async fn update(context: &mut Context, event: Event) -> Result<bool, Box<dyn Error>> {
+pub async fn update<'a>(context: &mut Context<'a>, event: Event) -> Result<bool, Box<dyn Error>> {
     let status_update = {
         context
             .status_bar
@@ -180,7 +181,7 @@ pub async fn update(context: &mut Context, event: Event) -> Result<bool, Box<dyn
     }
 }
 
-pub async fn draw(context: &mut Context) -> Result<(), Box<dyn Error>> {
+pub async fn draw<'a>(context: &mut Context<'a>) -> Result<(), Box<dyn Error>> {
     let router = context.router.try_lock();
     context.internal.draw(|frame| {
         let layout = layout::Layout::default()

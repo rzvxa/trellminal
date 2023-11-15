@@ -25,39 +25,47 @@ pub enum Event {
     Tick,
 }
 
+pub trait IntoInput {
+    fn into_input(self) -> Input;
+}
+
+impl IntoInput for KeyEvent {
+    fn into_input(self) -> Input {
+        if self.kind == KeyEventKind::Release {
+            // On Windows or when `crossterm::event::PushKeyboardEnhancementFlags` is set,
+            // key release event can be reported. Ignore it. (#14)
+            return Input::default();
+        }
+
+        let ctrl = self.modifiers.contains(KeyModifiers::CONTROL);
+        let alt = self.modifiers.contains(KeyModifiers::ALT);
+        let key = match self.code {
+            KeyCode::Char(c) => Key::Char(c),
+            KeyCode::Backspace => Key::Backspace,
+            KeyCode::Enter => Key::Enter,
+            KeyCode::Left => Key::Left,
+            KeyCode::Right => Key::Right,
+            KeyCode::Up => Key::Up,
+            KeyCode::Down => Key::Down,
+            KeyCode::Tab => Key::Tab,
+            KeyCode::Delete => Key::Delete,
+            KeyCode::Home => Key::Home,
+            KeyCode::End => Key::End,
+            KeyCode::PageUp => Key::PageUp,
+            KeyCode::PageDown => Key::PageDown,
+            KeyCode::Esc => Key::Esc,
+            KeyCode::F(x) => Key::F(x),
+            _ => Key::Null,
+        };
+
+        Input { key, ctrl, alt }
+    }
+}
+
 impl Into<Input> for Event {
     fn into(self) -> Input {
         match self {
-            Event::Input(event) => {
-                if event.kind == KeyEventKind::Release {
-                    // On Windows or when `crossterm::event::PushKeyboardEnhancementFlags` is set,
-                    // key release event can be reported. Ignore it. (#14)
-                    return Input::default();
-                }
-
-                let ctrl = event.modifiers.contains(KeyModifiers::CONTROL);
-                let alt = event.modifiers.contains(KeyModifiers::ALT);
-                let key = match event.code {
-                    KeyCode::Char(c) => Key::Char(c),
-                    KeyCode::Backspace => Key::Backspace,
-                    KeyCode::Enter => Key::Enter,
-                    KeyCode::Left => Key::Left,
-                    KeyCode::Right => Key::Right,
-                    KeyCode::Up => Key::Up,
-                    KeyCode::Down => Key::Down,
-                    KeyCode::Tab => Key::Tab,
-                    KeyCode::Delete => Key::Delete,
-                    KeyCode::Home => Key::Home,
-                    KeyCode::End => Key::End,
-                    KeyCode::PageUp => Key::PageUp,
-                    KeyCode::PageDown => Key::PageDown,
-                    KeyCode::Esc => Key::Esc,
-                    KeyCode::F(x) => Key::F(x),
-                    _ => Key::Null,
-                };
-
-                Input { key, ctrl, alt }
-            }
+            Event::Input(event) => event.into_input(),
             _ => Input::default(),
         }
     }
