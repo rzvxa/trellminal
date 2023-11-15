@@ -2,11 +2,11 @@ use super::Router;
 use crate::api::Api;
 use crate::database::Database;
 use crate::input::EventSender;
-use crate::ui::misc::status_bar::StatusBar;
+use crate::ui::misc::{loading::Loading, status_bar::StatusBar};
 use std::io;
-use tui::{backend::CrosstermBackend, Terminal};
 use std::sync::{Arc, Mutex};
 use tokio::sync::Mutex as TkMutex;
+use tui::{backend::CrosstermBackend, Terminal};
 
 type InternalTerminal = Terminal<CrosstermBackend<io::Stdout>>;
 
@@ -16,6 +16,7 @@ pub struct Context {
     pub api: Arc<Mutex<Api>>,
     pub router: Arc<TkMutex<Router>>,
     pub status_bar: StatusBar,
+    pub loading: Loading,
     pub event_sender: EventSender,
 }
 
@@ -27,6 +28,7 @@ impl<'a> Context {
         event_sender: EventSender,
         router: Router,
         status_bar: StatusBar,
+        loading: Loading,
     ) -> Self {
         Self {
             internal,
@@ -35,6 +37,7 @@ impl<'a> Context {
             router: Arc::new(TkMutex::new(router)),
             event_sender,
             status_bar,
+            loading,
         }
     }
 

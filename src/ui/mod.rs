@@ -16,14 +16,14 @@ use router::Router;
 use std::{
     error::Error,
     io::{self, Stdout},
-    sync::{Arc, Mutex, MutexGuard},
+    sync::{Arc, Mutex},
 };
 use tui::{backend::CrosstermBackend, layout, widgets, Frame as TFrame, Terminal};
 
-use misc::status_bar::StatusBar;
+use misc::{loading::Loading, status_bar::StatusBar};
 use pages::{
     authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
-    home::Home, manual_authenticate::ManualAuthenticate, workspaces::Workspaces, Page,
+    home::Home, manual_authenticate::ManualAuthenticate, workspaces::Workspaces,
 };
 
 type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
@@ -69,6 +69,7 @@ pub async fn init(
         event_sender.clone(),
         router,
         StatusBar::new(),
+        Loading::braille(10f64),
     );
     let db = context.db.clone();
     let api = context.api.clone();
@@ -188,7 +189,7 @@ pub async fn draw(context: &mut Context) -> Result<(), Box<dyn Error>> {
         if let Ok(mut router) = router {
             router.current_mut().unwrap().draw(frame, layout[0]);
         } else {
-            draw_loading(frame, layout[0]);
+            draw_loading(frame, layout[0], &mut context.loading);
         }
         context
             .status_bar
@@ -197,7 +198,7 @@ pub async fn draw(context: &mut Context) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn draw_loading(frame: &mut Frame, rect: layout::Rect) {
+fn draw_loading(frame: &mut Frame, rect: layout::Rect, loading: &mut Loading) {
     let layout = layout::Layout::default()
         .direction(layout::Direction::Vertical)
         .constraints([
@@ -209,7 +210,7 @@ fn draw_loading(frame: &mut Frame, rect: layout::Rect) {
         .block(widgets::Block::default())
         .wrap(widgets::Wrap { trim: true })
         .alignment(layout::Alignment::Center);
-    let text = widgets::Paragraph::new(format!("{} Loading...", misc::loading::braille(&rect)))
+    let text = widgets::Paragraph::new(format!("{} Loading...", loading.next(&rect)))
         .block(widgets::Block::default())
         .wrap(widgets::Wrap { trim: true })
         .alignment(layout::Alignment::Center);
