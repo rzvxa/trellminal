@@ -11,6 +11,8 @@ pub struct Router {
     history: Vec<String>,
     routes: HashMap<String, Box<dyn Page>>,
 }
+// regex ideas
+// \/:\w+
 
 impl Router {
     pub fn new() -> Self {
