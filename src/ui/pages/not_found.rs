@@ -99,7 +99,7 @@ impl Page for NotFound {
     async fn update(&mut self, event: Event, db: Database, api: Api) -> Operation {
         match event {
             Event::Input(event) => match event.code {
-                KeyCode::Char('b') | KeyCode::Char('B') => Operation::Navigate("/back".to_string()),
+                KeyCode::Char('b') | KeyCode::Char('B') => Operation::NavigateBackward,
                 KeyCode::Char('h') | KeyCode::Char('H') => Operation::Navigate("/".to_string()),
                 KeyCode::Char('q') | KeyCode::Char('Q') => Operation::Exit,
                 KeyCode::Up | KeyCode::Char('k') => {
@@ -111,7 +111,7 @@ impl Page for NotFound {
                     Operation::None
                 }
                 KeyCode::Enter => match self.selected_button {
-                    0 => Operation::Navigate("/back".to_string()),
+                    0 => Operation::NavigateBackward,
                     1 => Operation::Navigate("/".to_string()),
                     2 => Operation::Exit,
                     _ => Operation::None,

@@ -132,6 +132,7 @@ impl<'a> StatusBar<'a> {
         let command = self.command();
         match &*command {
             "q" | "qa" | "q!" => Operation::Exit,
+            "back" => Operation::NavigateBackward,
             "help" => Operation::Navigate("/help".to_string()),
             _ => Operation::Consume,
         }

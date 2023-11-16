@@ -34,6 +34,7 @@ type Api = Arc<Mutex<RawApi>>;
 pub enum Operation {
     None,
     Navigate(String),
+    NavigateBackward,
     Consume,
     Exit,
 }
@@ -126,9 +127,21 @@ async fn handle_status_bar_update<'a>(
                 .await;
             StatusBarUpdateResult::consume()
         }
+        Operation::NavigateBackward => {
+            let db = context.db.clone();
+            let api = context.api.clone();
+            let event_sender = context.event_sender.clone();
+            context
+                .router
+                .lock()
+                .await
+                .navigate_backward(db, api, event_sender)
+                .await;
+            StatusBarUpdateResult::consume()
+        }
         Operation::Consume => StatusBarUpdateResult::consume(),
         Operation::Exit => StatusBarUpdateResult::exit(),
-        _ => StatusBarUpdateResult::pass(),
+        Operation::None => StatusBarUpdateResult::pass(),
     }
 }
 
@@ -145,6 +158,22 @@ async fn handle_page_update<'a>(context: &mut Context<'a>, operation: Operation)
                         .lock()
                         .await
                         .navigate(loc, db, api, event_sender)
+                        .await;
+                }
+            });
+            true
+        }
+        Operation::NavigateBackward => {
+            tokio::spawn({
+                let db = context.db.clone();
+                let api = context.api.clone();
+                let router = context.router.clone();
+                let event_sender = context.event_sender.clone();
+                async move {
+                    router
+                        .lock()
+                        .await
+                        .navigate_backward(db, api, event_sender)
                         .await;
                 }
             });

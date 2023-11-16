@@ -15,6 +15,12 @@ const FRAME_RATE: u8 = 10;
 const DETLA_TIME: u64 = 1000 / (FRAME_RATE as u64);
 const DETLA_TIME_F64: f64 = (DETLA_TIME as f64) / 1000f64;
 
+pub trait Ignore: Sized {
+    fn ignore(self) -> () {}
+}
+
+impl<T, E> Ignore for Result<T, E> {}
+
 fn home_dir() -> Option<String> {
     match _home_dir() {
         Some(pathbuf) => match pathbuf.into_os_string().into_string() {
