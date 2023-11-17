@@ -72,12 +72,11 @@ impl Router {
         self
     }
 
-    pub fn not_found<P>(mut self, page: P) -> Self
+    pub fn not_found<P>(self, page: P) -> Self
     where
         P: Page + 'static,
     {
-        self.routes.insert(NOT_FOUND_ROUTE.to_owned(), Box::new(page));
-        self
+        self.route(NOT_FOUND_ROUTE.to_owned(), page)
     }
 
     pub async fn navigate(
