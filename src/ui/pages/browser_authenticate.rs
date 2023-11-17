@@ -14,8 +14,8 @@ use crate::input::{
     http_server::{HttpServer, Request, RespondWithHtml},
     Event, EventSender, KeyCode,
 };
+use crate::router::{page::Page, Params};
 use crate::ui::{misc::logo, Api, Database, Frame, Operation};
-use crate::router::page::Page;
 
 pub struct BrowserAuthenticate {
     web_server: Option<HttpServer>,
@@ -44,7 +44,7 @@ fn request_validator(req: &Request) -> bool {
 
 #[async_trait]
 impl Page for BrowserAuthenticate {
-    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, params: Params) {
         self.web_server = Some(HttpServer::new(event_sender, "9999", request_validator));
     }
 

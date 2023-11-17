@@ -13,8 +13,8 @@ use qrcode::{EcLevel, QrCode, Version};
 use const_format::formatcp;
 
 use crate::input::{Event, EventSender, KeyCode};
+use crate::router::{page::Page, Params};
 use crate::ui::{misc::logo, Api, Database, Frame, Operation};
-use crate::router::page::Page;
 
 const MENU_BUTTON_LEN: u8 = 4;
 
@@ -34,7 +34,7 @@ use async_trait::async_trait;
 
 #[async_trait]
 impl<'a> Page for ManualAuthenticate<'a> {
-    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {}
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, params: Params) {}
 
     async fn unmount(&mut self, db: Database, api: Api) {}
 

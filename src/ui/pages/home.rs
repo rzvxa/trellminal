@@ -1,6 +1,6 @@
 use crate::input::{Event, EventSender};
-use crate::ui::{Frame, Operation, Api, Database};
-use crate::router::page::Page;
+use crate::router::{page::Page, Params};
+use crate::ui::{Api, Database, Frame, Operation};
 use tui::layout::Rect;
 
 pub struct Home {}
@@ -8,7 +8,7 @@ pub struct Home {}
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Home {
-    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {}
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, params: Params) {}
 
     async fn unmount(&mut self, db: Database, api: Api) {}
 

@@ -5,19 +5,22 @@ use tui::{
 };
 
 use crate::input::{Event, EventSender, KeyCode};
-use crate::ui::{Frame, Operation, Api, Database};
-use crate::router::page::Page;
+use crate::router::{page::Page, Params};
+use crate::ui::{Api, Database, Frame, Operation};
 
 const MENU_BUTTON_LEN: u8 = 3;
 
 pub struct NotFound {
     selected_button: u8,
+    origin: String,
 }
 
 use async_trait::async_trait;
 #[async_trait]
 impl Page for NotFound {
-    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {}
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, mut params: Params) {
+        self.origin = params.remove("origin").unwrap();
+    }
 
     async fn unmount(&mut self, db: Database, api: Api) {}
 
@@ -39,6 +42,7 @@ impl Page for NotFound {
                 Constraint::Percentage(60),
                 Constraint::Length(1),
                 Constraint::Length(1),
+                Constraint::Length(1),
                 Constraint::Percentage(30),
                 Constraint::Percentage(10),
             ])
@@ -50,9 +54,14 @@ impl Page for NotFound {
                 Constraint::Length(1),
                 Constraint::Length(1),
             ])
-            .split(center_layout[3]);
+            .split(center_layout[4]);
 
         let title = Paragraph::new("Something went wrong and something were not found!")
+            .block(Block::default())
+            .wrap(Wrap { trim: true })
+            .alignment(Alignment::Center);
+
+        let msg = Paragraph::new(format!("\"{}\" not found!", self.origin))
             .block(Block::default())
             .wrap(Wrap { trim: true })
             .alignment(Alignment::Center);
@@ -91,6 +100,7 @@ impl Page for NotFound {
         let mut btn_iter = btns.into_iter();
         frame.render_widget(block, rect);
         frame.render_widget(title, center_layout[1]);
+        frame.render_widget(msg, center_layout[2]);
         frame.render_widget(btn_iter.next().unwrap(), btn_layout[0]);
         frame.render_widget(btn_iter.next().unwrap(), btn_layout[1]);
         frame.render_widget(btn_iter.next().unwrap(), btn_layout[2]);
@@ -125,7 +135,7 @@ impl Page for NotFound {
 
 impl NotFound {
     pub fn new() -> Self {
-        Self { selected_button: 0 }
+        Self { selected_button: 0, origin: String::new() }
     }
 
     fn menu_up(&mut self) -> bool {

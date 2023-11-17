@@ -8,6 +8,7 @@ use super::{Api, Database};
 use crate::input::{Event, EventSender, KeyCode};
 use crate::ui::Frame;
 use crate::ui::{pages::Page, Operation};
+use crate::router::{Page, Params};
 
 pub struct Home {
     state: ListState,
@@ -16,7 +17,7 @@ pub struct Home {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Home {
-    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, params: Params) {
         self.state.select(Some(1));
     }
 

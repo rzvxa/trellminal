@@ -10,10 +10,13 @@ use crate::database::Database as RawDatabase;
 use crate::input::{Event, EventSender};
 use once_cell::sync::Lazy;
 use std::{
+    collections::HashMap,
     io::Stdout,
     sync::{Arc, Mutex},
 };
 use tui::{backend::CrosstermBackend, Frame as TFrame};
+
+pub type Params = HashMap<String, String>;
 
 type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
 type Database = Arc<Mutex<RawDatabase>>;
@@ -87,6 +90,10 @@ impl Router {
         api: Api,
         event_sender: EventSender,
     ) {
+        let mut params = Params::new();
+        params.insert("location".to_string(), location.clone());
+        params.insert("origin".to_string(), self.peek().clone());
+
         let location = if self.routes.contains_location(&location) {
             location
         } else {
@@ -97,7 +104,7 @@ impl Router {
             _ => {}
         }
         match self.routes.get_mut(&location) {
-            Some(cur) => cur.mount(db, api, event_sender).await,
+            Some(cur) => cur.mount(db, api, event_sender, params).await,
             _ => {}
         }
         self.push(location);

@@ -7,7 +7,7 @@ use tui::{
 use crate::api::{members::Members, organizations::Organizations};
 use crate::input::{Event, EventSender, KeyCode};
 use crate::models::Organization;
-use crate::router::page::Page;
+use crate::router::{page::Page, Params};
 use crate::ui::{
     misc::layout::{center_rect_with_margin, rect_with_margin_top},
     Api, Database, Frame, Operation,
@@ -23,7 +23,7 @@ pub struct Workspaces {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Workspaces {
-    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender) {
+    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, params: Params) {
         self.workspaces.clear();
         self.state.select(Some(0));
 
