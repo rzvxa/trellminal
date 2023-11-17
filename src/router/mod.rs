@@ -1,18 +1,19 @@
 pub mod page;
+mod routes;
 
 use crate::Ignore;
 use page::Page;
+use routes::Routes;
 
 use crate::api::Api as RawApi;
 use crate::database::Database as RawDatabase;
 use crate::input::{Event, EventSender};
+use once_cell::sync::Lazy;
 use std::{
-    collections::HashMap,
     io::Stdout,
     sync::{Arc, Mutex},
 };
 use tui::{backend::CrosstermBackend, Frame as TFrame};
-use once_cell::sync::Lazy;
 
 type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
 type Database = Arc<Mutex<RawDatabase>>;
@@ -28,7 +29,7 @@ pub enum Operation {
 
 pub struct Router {
     history: Vec<String>,
-    routes: HashMap<String, Box<dyn Page>>,
+    routes: Routes,
 }
 // regex ideas
 // \/:\w+
@@ -39,7 +40,7 @@ impl Router {
     pub fn new() -> Self {
         Self {
             history: vec![],
-            routes: HashMap::new(),
+            routes: Routes::new(),
         }
     }
 
@@ -68,7 +69,7 @@ impl Router {
     where
         P: Page + 'static,
     {
-        self.routes.insert(location, Box::new(page));
+        self.routes.insert(location, page);
         self
     }
 
@@ -86,7 +87,7 @@ impl Router {
         api: Api,
         event_sender: EventSender,
     ) {
-        let location = if self.routes.contains_key(&location) {
+        let location = if self.routes.contains_location(&location) {
             location
         } else {
             NOT_FOUND_ROUTE.clone()
@@ -110,17 +111,11 @@ impl Router {
     }
 
     pub fn current(&self) -> Option<&dyn Page> {
-        match self.routes.get(self.peek()) {
-            Some(p) => Some(p.as_ref()),
-            None => None,
-        }
+        self.routes.get(self.peek())
     }
 
     pub fn current_mut(&mut self) -> Option<&mut dyn Page> {
         let location = self.peek().clone();
-        match self.routes.get_mut(&location) {
-            Some(p) => Some(p.as_mut()),
-            None => None,
-        }
+        self.routes.get_mut(&location)
     }
 }
