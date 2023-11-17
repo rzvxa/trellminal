@@ -6,16 +6,17 @@ use tui::{
 
 use crate::api::{members::Members, organizations::Organizations};
 use crate::input::{Event, EventSender, KeyCode};
+use crate::models::Organization;
+use crate::router::page::Page;
 use crate::ui::{
     misc::layout::{center_rect_with_margin, rect_with_margin_top},
     Api, Database, Frame, Operation,
 };
-use crate::router::page::Page;
 
 use tokio::task::JoinSet;
 
 pub struct Workspaces {
-    workspaces: Vec<String>,
+    workspaces: Vec<Organization>,
     state: ListState,
 }
 
@@ -42,7 +43,7 @@ impl Page for Workspaces {
                     });
             }
             while let Some(result) = futures.join_next().await {
-                self.workspaces.push(result.unwrap().unwrap().display_name);
+                self.workspaces.push(result.unwrap().unwrap());
             }
         }
     }
@@ -58,7 +59,7 @@ impl Page for Workspaces {
         let recent_boards: Vec<ListItem> = self
             .workspaces
             .iter()
-            .map(|w| ListItem::new(w.clone()))
+            .map(|w| ListItem::new(w.display_name.clone()))
             .collect();
 
         let workspaces_block = Block::default()
@@ -85,6 +86,10 @@ impl Page for Workspaces {
                 KeyCode::Down | KeyCode::Char('j') => {
                     self.down();
                     Operation::None
+                }
+                KeyCode::Enter => {
+                    let org_id = self.workspaces[self.state.selected().unwrap()].id.clone();
+                    Operation::Navigate(format!("/w/{}/boards", org_id))
                 }
                 _ => Operation::None,
             },

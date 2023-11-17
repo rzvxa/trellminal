@@ -55,7 +55,8 @@ pub async fn init<'a>(
             "/authenticate/manual".to_string(),
             ManualAuthenticate::new(),
         )
-        .route("/workspaces".to_string(), Workspaces::new());
+        .route("/w".to_string(), Workspaces::new())
+        .route("/w/:w/boards".to_string(), Workspaces::new());
     let context = Context::new(
         terminal,
         db,

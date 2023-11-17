@@ -16,7 +16,7 @@ impl Page for Home {
 
     async fn update(&mut self, event: Event, db: Database, api: Api) -> Operation {
         match event {
-            _ => Operation::Navigate("/workspaces".to_string()),
+            _ => Operation::Navigate("/w".to_string()),
         }
     }
 }
