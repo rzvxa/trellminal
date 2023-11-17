@@ -1264,6 +1264,7 @@ dependencies = [
  "const_format",
  "crossterm 0.27.0",
  "home",
+ "once_cell",
  "qrcode",
  "reqwest",
  "serde",

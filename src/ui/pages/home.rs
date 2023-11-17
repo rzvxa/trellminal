@@ -1,6 +1,6 @@
-use super::{Api, Database};
 use crate::input::{Event, EventSender};
-use crate::ui::{pages::Page, Frame, Operation};
+use crate::ui::{Frame, Operation, Api, Database};
+use crate::router::page::Page;
 use tui::layout::Rect;
 
 pub struct Home {}

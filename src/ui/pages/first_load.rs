@@ -4,10 +4,9 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use super::{Api, Database};
 use crate::input::{Event, EventSender, KeyCode};
-use crate::ui::Frame;
-use crate::ui::{pages::Page, Operation};
+use crate::router::page::Page;
+use crate::ui::{Api, Database, Frame, Operation};
 
 const WELCOME_TEXT: &str = "Hello, World!
 Welcome to the Trellminal, It's a small and lightweight terminal client for Trello written in Rust.

@@ -1,18 +1,17 @@
 mod context;
 mod misc;
 mod pages;
-mod router;
 
 use crate::api::Api as RawApi;
 use crate::database::Database as RawDatabase;
 use crate::input::{Event, EventSender};
+use crate::router::{Operation, Router};
 use context::Context;
 use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use router::Router;
 use std::{
     error::Error,
     io::{self, Stdout},
@@ -23,21 +22,14 @@ use tui::{backend::CrosstermBackend, layout, widgets, Frame as TFrame, Terminal}
 use misc::{loading::Loading, status_bar::StatusBar};
 use pages::{
     authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
-    home::Home, manual_authenticate::ManualAuthenticate, workspaces::Workspaces,
+    home::Home, manual_authenticate::ManualAuthenticate, not_found::NotFound,
+    workspaces::Workspaces,
 };
 
 type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
 
 type Database = Arc<Mutex<RawDatabase>>;
 type Api = Arc<Mutex<RawApi>>;
-
-pub enum Operation {
-    None,
-    Navigate(String),
-    NavigateBackward,
-    Consume,
-    Exit,
-}
 
 pub async fn init<'a>(
     db: RawDatabase,
@@ -51,6 +43,8 @@ pub async fn init<'a>(
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
     let router = Router::new()
+        .not_found(NotFound::new())
+        .route("/".to_string(), Home::new())
         .route("/first_load".to_string(), FirstLoad::new())
         .route("/authenticate".to_string(), Authenticate::new())
         .route(
@@ -61,8 +55,7 @@ pub async fn init<'a>(
             "/authenticate/manual".to_string(),
             ManualAuthenticate::new(),
         )
-        .route("/workspaces".to_string(), Workspaces::new())
-        .route("/".to_string(), Home::new());
+        .route("/workspaces".to_string(), Workspaces::new());
     let context = Context::new(
         terminal,
         db,
@@ -212,12 +205,17 @@ pub async fn update<'a>(context: &mut Context<'a>, event: Event) -> Result<bool,
 
 pub async fn draw<'a>(context: &mut Context<'a>) -> Result<(), Box<dyn Error>> {
     let router = context.router.try_lock();
+    let mut err = "";
     context.internal.draw(|frame| {
         let layout = layout::Layout::default()
             .constraints([layout::Constraint::Min(1), layout::Constraint::Length(1)])
             .split(frame.size());
         if let Ok(mut router) = router {
-            router.current_mut().unwrap().draw(frame, layout[0]);
+            if let Some(page) = router.current_mut() {
+                page.draw(frame, layout[0]);
+            } else {
+                err = "Router is pointing to nowhere";
+            }
         } else {
             draw_loading(frame, layout[0], &mut context.loading);
         }
@@ -225,7 +223,11 @@ pub async fn draw<'a>(context: &mut Context<'a>) -> Result<(), Box<dyn Error>> {
             .status_bar
             .draw(frame, layout[1], context.db.clone(), context.api.clone());
     })?;
-    Ok(())
+    if err.is_empty() {
+        Ok(())
+    } else {
+        Err(err.into())
+    }
 }
 
 fn draw_loading(frame: &mut Frame, rect: layout::Rect, loading: &mut Loading) {

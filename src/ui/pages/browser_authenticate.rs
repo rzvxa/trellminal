@@ -10,13 +10,12 @@ use crate::{API_KEY, APP_NAME};
 use const_format::formatcp;
 use webbrowser;
 
-use super::{Api, Database};
 use crate::input::{
     http_server::{HttpServer, Request, RespondWithHtml},
     Event, EventSender, KeyCode,
 };
-use crate::ui::{misc::logo, Frame};
-use crate::ui::{pages::Page, Operation};
+use crate::ui::{misc::logo, Api, Database, Frame, Operation};
+use crate::router::page::Page;
 
 pub struct BrowserAuthenticate {
     web_server: Option<HttpServer>,

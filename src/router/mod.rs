@@ -1,11 +1,30 @@
-use std::collections::HashMap;
-use crate::Ignore;
+pub mod page;
 
-use super::{
-    pages::{not_found::NotFound, Page},
-    Api, Database,
+use crate::Ignore;
+use page::Page;
+
+use crate::api::Api as RawApi;
+use crate::database::Database as RawDatabase;
+use crate::input::{Event, EventSender};
+use std::{
+    collections::HashMap,
+    io::Stdout,
+    sync::{Arc, Mutex},
 };
-use crate::input::EventSender;
+use tui::{backend::CrosstermBackend, Frame as TFrame};
+use once_cell::sync::Lazy;
+
+type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
+type Database = Arc<Mutex<RawDatabase>>;
+type Api = Arc<Mutex<RawApi>>;
+
+pub enum Operation {
+    None,
+    Navigate(String),
+    NavigateBackward,
+    Consume,
+    Exit,
+}
 
 pub struct Router {
     history: Vec<String>,
@@ -14,21 +33,27 @@ pub struct Router {
 // regex ideas
 // \/:\w+
 
+static NOT_FOUND_ROUTE: Lazy<String> = Lazy::new(|| "/404".to_string());
+
 impl Router {
     pub fn new() -> Self {
-        let not_found_page: Box<dyn Page> = Box::new(NotFound::new());
         Self {
-            history: vec!["/".to_string()],
-            routes: HashMap::from_iter([("/404".to_string(), not_found_page)]),
+            history: vec![],
+            routes: HashMap::new(),
         }
     }
 
     pub fn peek(&self) -> &String {
-        &self.history[self.history.len() - 1]
+        let len = self.history.len();
+        if len > 0 {
+            &self.history[len - 1]
+        } else {
+            &NOT_FOUND_ROUTE
+        }
     }
 
     fn pop(&mut self) -> Result<String, &String> {
-        if self.history.len() == 1 {
+        if self.history.len() <= 1 {
             Err(self.peek())
         } else {
             Ok(self.history.pop().unwrap())
@@ -47,6 +72,14 @@ impl Router {
         self
     }
 
+    pub fn not_found<P>(mut self, page: P) -> Self
+    where
+        P: Page + 'static,
+    {
+        self.routes.insert(NOT_FOUND_ROUTE.to_owned(), Box::new(page));
+        self
+    }
+
     pub async fn navigate(
         &mut self,
         location: String,
@@ -57,9 +90,8 @@ impl Router {
         let location = if self.routes.contains_key(&location) {
             location
         } else {
-            "/404".to_string()
+            NOT_FOUND_ROUTE.clone()
         };
-        let clone_location = location.clone();
         match self.current_mut() {
             Some(cur) => cur.unmount(db.clone(), api.clone()).await,
             _ => {}
@@ -68,7 +100,7 @@ impl Router {
             Some(cur) => cur.mount(db, api, event_sender).await,
             _ => {}
         }
-        self.push(clone_location);
+        self.push(location);
     }
 
     pub async fn navigate_backward(&mut self, db: Database, api: Api, event_sender: EventSender) {

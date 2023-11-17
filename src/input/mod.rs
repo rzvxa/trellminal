@@ -3,6 +3,7 @@ pub mod http_server;
 use crossterm::event::{self, Event as CEvent, KeyEventKind, KeyModifiers};
 use std::{
     convert::Into,
+    default::Default,
     sync::mpsc::{self, Receiver, Sender},
     thread,
     time::{Duration, Instant},
@@ -19,9 +20,11 @@ pub use crossterm::event::KeyEvent;
 pub type EventSender = Sender<Event>;
 pub type EventReceiver = Receiver<Event>;
 
+#[derive(Default)]
 pub enum Event {
     Input(KeyEvent),
     Request(Request),
+    #[default]
     Tick,
 }
 

@@ -4,9 +4,9 @@ use tui::{
     widgets::{Block, Borders, Paragraph, Wrap},
 };
 
-use super::{Api, Database};
 use crate::input::{Event, EventSender, KeyCode};
-use crate::ui::{pages::Page, Frame, Operation};
+use crate::ui::{Frame, Operation, Api, Database};
+use crate::router::page::Page;
 
 const MENU_BUTTON_LEN: u8 = 3;
 

@@ -9,13 +9,12 @@ use tui_textarea::TextArea;
 use crate::api::members::Members;
 use crate::{API_KEY, APP_NAME, DARK_MODE};
 use qrcode::{EcLevel, QrCode, Version};
-use super::{Api, Database};
 
 use const_format::formatcp;
 
 use crate::input::{Event, EventSender, KeyCode};
-use crate::ui::{misc::logo, Frame};
-use crate::ui::{Operation, pages::Page};
+use crate::ui::{misc::logo, Api, Database, Frame, Operation};
+use crate::router::page::Page;
 
 const MENU_BUTTON_LEN: u8 = 4;
 
@@ -408,9 +407,7 @@ impl<'a> ManualAuthenticate<'a> {
         match event {
             Event::Input(event) => match event.code {
                 KeyCode::Char('k') => self.show_qr_code = false,
-                KeyCode::Char('t') | KeyCode::Char('T') => {
-                    self.qr_dark_mode = !self.qr_dark_mode
-                }
+                KeyCode::Char('t') | KeyCode::Char('T') => self.qr_dark_mode = !self.qr_dark_mode,
                 KeyCode::Left | KeyCode::Char('h') => self.qr_selected_button = 0,
                 KeyCode::Right | KeyCode::Char('l') => self.qr_selected_button = 1,
                 KeyCode::Esc => self.show_qr_code = false,

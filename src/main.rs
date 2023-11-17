@@ -2,6 +2,7 @@ mod api;
 mod database;
 mod input;
 mod models;
+mod router;
 mod ui;
 
 use home::home_dir as _home_dir;
@@ -57,8 +58,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .await
         .unwrap();
 
+    let mut error: Option<Box<dyn Error>> = None;
+
     loop {
-        let event = event_receiver.recv().unwrap();
+        let event = event_receiver.recv().unwrap_or_default();
         if let input::Event::Input(i) = event {
             if i.code == input::KeyCode::Char('c')
                 && i.modifiers
@@ -72,10 +75,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
             break;
         }
 
-        ui::draw(&mut context).await.unwrap();
+        if let Err(err) = ui::draw(&mut context).await {
+            error = Some(err);
+            break;
+        }
     }
 
-    ui::fini(&mut context).unwrap();
+    if let Err(err) = ui::fini(&mut context) {
+        println!("{:?}", err);
+    }
+
+    if let Some(err) = error {
+        println!("{:?}", err);
+    }
 
     context
         .db
