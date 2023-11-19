@@ -12,14 +12,14 @@ const MENU_BUTTON_LEN: u8 = 3;
 
 pub struct NotFound {
     selected_button: u8,
-    origin: String,
+    location: String,
 }
 
 use async_trait::async_trait;
 #[async_trait]
 impl Page for NotFound {
     async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, mut params: Params) {
-        self.origin = params.remove("origin").unwrap();
+        self.location = params.remove("location").unwrap();
     }
 
     async fn unmount(&mut self, db: Database, api: Api) {}
@@ -61,7 +61,7 @@ impl Page for NotFound {
             .wrap(Wrap { trim: true })
             .alignment(Alignment::Center);
 
-        let msg = Paragraph::new(format!("\"{}\" not found!", self.origin))
+        let msg = Paragraph::new(format!("\"{}\" not found!", self.location))
             .block(Block::default())
             .wrap(Wrap { trim: true })
             .alignment(Alignment::Center);
@@ -135,7 +135,7 @@ impl Page for NotFound {
 
 impl NotFound {
     pub fn new() -> Self {
-        Self { selected_button: 0, origin: String::new() }
+        Self { selected_button: 0, location: String::new() }
     }
 
     fn menu_up(&mut self) -> bool {
