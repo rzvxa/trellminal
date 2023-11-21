@@ -104,8 +104,8 @@ impl Router {
             Some(cur) => cur.unmount(db.clone(), api.clone()).await,
             _ => {}
         }
-        match self.routes.get_mut(&location) {
-            Some(cur) => cur.mount(db, api, event_sender, params).await,
+        match self.routes.get_mut_with_params(&location, params) {
+            Some((cur, params)) => cur.mount(db, api, event_sender, params).await,
             _ => {}
         }
         self.push(location);
