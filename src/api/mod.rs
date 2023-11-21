@@ -1,14 +1,24 @@
 pub mod members;
 pub mod organizations;
 
-use async_trait::async_trait;
-use std::{error::Error, marker::PhantomData};
+use std::marker::PhantomData;
+use thiserror::Error;
 
 const ENDPOINT: &str = "https://api.trello.com/1";
 
 pub struct Api {
     key: String,
     token: String,
+}
+
+#[derive(Error, Debug)]
+pub enum SendRequestError {
+    #[error("Token Expired")]
+    ExpiredToken,
+    #[error(transparent)]
+    RequestError(#[from] reqwest::Error),
+    #[error(transparent)]
+    SerializationError(#[from] serde_json::Error),
 }
 
 pub enum RequestProtocol {
@@ -41,10 +51,27 @@ where
         Self::new(url, RequestProtocol::GET)
     }
 
-    pub async fn send(self) -> Result<Response, Box<dyn Error + Send + Sync>> {
+    pub async fn send(self) -> Result<Response, SendRequestError> {
+        match self.protocol {
+            RequestProtocol::GET => self.send_get().await,
+            RequestProtocol::POST => self.send_post().await,
+        }
+    }
+
+    async fn send_get(self) -> Result<Response, SendRequestError> {
         let body = reqwest::get(self.url).await?.text().await?;
-        let response: Response = serde_json::from_str(body.as_str())?;
-        Ok(response)
+        let body: &str = body.as_str();
+        match body {
+            "expired token" => Err(SendRequestError::ExpiredToken),
+            _ => {
+                let response: Response = serde_json::from_str(body)?;
+                Ok(response)
+            }
+        }
+    }
+
+    async fn send_post(self) -> Result<Response, SendRequestError> {
+        todo!()
     }
 }
 
