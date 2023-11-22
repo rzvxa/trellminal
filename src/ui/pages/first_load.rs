@@ -5,7 +5,10 @@ use tui::{
 };
 
 use crate::input::{Event, EventSender, KeyCode};
-use crate::router::{page::Page, Params};
+use crate::router::{
+    page::{MountResult, MountOperation, Page},
+    Params,
+};
 use crate::ui::{Api, Database, Frame, Operation};
 
 const WELCOME_TEXT: &str = "Hello, World!
@@ -20,7 +23,15 @@ pub struct FirstLoad {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for FirstLoad {
-    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, params: Params) {}
+    async fn mount(
+        &mut self,
+        db: Database,
+        api: Api,
+        event_sender: EventSender,
+        params: Params,
+    ) -> MountResult {
+        Ok(MountOperation::None)
+    }
 
     async fn unmount(&mut self, db: Database, api: Api) {}
 

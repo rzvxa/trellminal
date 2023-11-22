@@ -3,12 +3,13 @@ mod routes;
 mod with_params;
 
 use crate::Ignore;
-use page::Page;
+use page::{MountOperation, MountResult, Page};
 use routes::Routes;
 
-use crate::api::Api as RawApi;
+use crate::api::{Api as RawApi, SendRequestError};
 use crate::database::Database as RawDatabase;
 use crate::input::{Event, EventSender};
+use async_recursion::async_recursion;
 use once_cell::sync::Lazy;
 use std::{
     collections::HashMap,
@@ -35,10 +36,10 @@ pub struct Router {
     history: Vec<String>,
     routes: Routes,
 }
-// regex ideas
-// \/:\w+
 
 static NOT_FOUND_ROUTE: Lazy<String> = Lazy::new(|| "/404".to_string());
+static TOKEN_EXPIRED_ROUTE: Lazy<String> = Lazy::new(|| "/token_expired".to_string());
+static ERROR_ROUTE: Lazy<String> = Lazy::new(|| "/error".to_string());
 
 impl Router {
     pub fn new() -> Self {
@@ -84,37 +85,96 @@ impl Router {
         self.route(NOT_FOUND_ROUTE.to_owned(), page)
     }
 
+    #[async_recursion]
     pub async fn navigate(
         &mut self,
         location: String,
-        db: Database,
-        api: Api,
-        event_sender: EventSender,
+        db: &Database,
+        api: &Api,
+        event_sender: &EventSender,
     ) {
-        let mut params = Params::new();
-        params.insert("location".to_string(), location.clone());
-        params.insert("origin".to_string(), self.peek().clone());
-
         let location = if self.routes.contains_location(&location) {
             location
         } else {
             NOT_FOUND_ROUTE.clone()
         };
-        match self.current_mut() {
-            Some(cur) => cur.unmount(db.clone(), api.clone()).await,
-            _ => {}
+        self.unmount_current(db, api).await;
+
+        match self
+            .mount_page(location.clone(), db, api, event_sender)
+            .await
+        {
+            Ok(op) => {
+                self.push(location);
+                match op {
+                    MountOperation::Redirect(loc) => {
+                        self.navigate(loc, db, api, event_sender).await
+                    }
+                    MountOperation::None => {}
+                }
+            }
+            Err(err) => {
+                self.navigate(
+                    format!("{}/{}", ERROR_ROUTE.to_owned(), err.to_string()),
+                    db,
+                    api,
+                    event_sender,
+                )
+                .await
+            }
         }
-        match self.routes.get_mut_with_params(&location, params) {
-            Some((cur, params)) => cur.mount(db, api, event_sender, params).await,
-            _ => {}
-        }
-        self.push(location);
     }
 
-    pub async fn navigate_backward(&mut self, db: Database, api: Api, event_sender: EventSender) {
+    pub async fn navigate_backward(
+        &mut self,
+        db: &Database,
+        api: &Api,
+        event_sender: &EventSender,
+    ) {
         self.pop().ignore();
         if let Ok(loc) = self.pop() {
             self.navigate(loc, db, api, event_sender).await;
+        }
+    }
+
+    async fn unmount_current(&mut self, db: &Database, api: &Api) {
+        if let Some(cur) = self.current_mut() {
+            cur.unmount(db.clone(), api.clone()).await;
+        }
+    }
+
+    async fn mount_page(
+        &mut self,
+        location: String,
+        db: &Database,
+        api: &Api,
+        event_sender: &EventSender,
+    ) -> MountResult {
+        let mut params = Params::new();
+        params.insert("location".to_string(), location.clone());
+        params.insert("origin".to_string(), self.peek().clone());
+
+        if let Some((cur, params)) = self.routes.get_mut_with_params(&location, params) {
+            let result = cur
+                .mount(db.clone(), api.clone(), event_sender.clone(), params)
+                .await;
+            if let Err(err) = result {
+                if let Some(req_err) = err.downcast_ref::<SendRequestError>() {
+                    match req_err {
+                        SendRequestError::ExpiredToken => {
+                            Ok(MountOperation::Redirect(TOKEN_EXPIRED_ROUTE.to_string()))
+                        }
+
+                        _ => Err(err),
+                    }
+                } else {
+                    Err(err)
+                }
+            } else {
+                result
+            }
+        } else {
+            Ok(MountOperation::Redirect(NOT_FOUND_ROUTE.to_owned()))
         }
     }
 

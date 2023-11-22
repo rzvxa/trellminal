@@ -23,7 +23,7 @@ use misc::{loading::Loading, status_bar::StatusBar};
 use pages::{
     authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
     home::Home, manual_authenticate::ManualAuthenticate, not_found::NotFound,
-    workspaces::Workspaces,
+    token_expired::TokenExpired, workspaces::Workspaces,
 };
 
 type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
@@ -45,6 +45,7 @@ pub async fn init<'a>(
     let router = Router::new()
         .not_found(NotFound::new())
         .route("/".to_string(), Home::new())
+        .route("/token_expired".to_string(), TokenExpired::new())
         .route("/first_load".to_string(), FirstLoad::new())
         .route("/authenticate".to_string(), Authenticate::new())
         .route(
@@ -61,18 +62,21 @@ pub async fn init<'a>(
         terminal,
         db,
         api,
-        event_sender.clone(),
+        event_sender,
         router,
         StatusBar::new(),
         Loading::braille(10f64),
     );
-    let db = context.db.clone();
-    let api = context.api.clone();
     context
         .router
         .lock()
         .await
-        .navigate(String::from(initial_route), db, api, event_sender)
+        .navigate(
+            String::from(initial_route),
+            &context.db,
+            &context.api,
+            &context.event_sender,
+        )
         .await;
     Ok(context)
 }
@@ -111,25 +115,20 @@ async fn handle_status_bar_update<'a>(
 ) -> StatusBarUpdateResult {
     match operation {
         Operation::Navigate(loc) => {
-            let db = context.db.clone();
-            let api = context.api.clone();
             context
                 .router
                 .lock()
                 .await
-                .navigate(loc, db, api, context.event_sender.clone())
+                .navigate(loc, &context.db, &context.api, &context.event_sender)
                 .await;
             StatusBarUpdateResult::consume()
         }
         Operation::NavigateBackward => {
-            let db = context.db.clone();
-            let api = context.api.clone();
-            let event_sender = context.event_sender.clone();
             context
                 .router
                 .lock()
                 .await
-                .navigate_backward(db, api, event_sender)
+                .navigate_backward(&context.db, &context.api, &context.event_sender)
                 .await;
             StatusBarUpdateResult::consume()
         }
@@ -151,7 +150,7 @@ async fn handle_page_update<'a>(context: &mut Context<'a>, operation: Operation)
                     router
                         .lock()
                         .await
-                        .navigate(loc, db, api, event_sender)
+                        .navigate(loc, &db, &api, &event_sender)
                         .await;
                 }
             });
@@ -167,7 +166,7 @@ async fn handle_page_update<'a>(context: &mut Context<'a>, operation: Operation)
                     router
                         .lock()
                         .await
-                        .navigate_backward(db, api, event_sender)
+                        .navigate_backward(&db, &api, &event_sender)
                         .await;
                 }
             });

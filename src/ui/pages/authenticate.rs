@@ -5,7 +5,10 @@ use tui::{
 };
 
 use crate::input::{Event, EventSender, KeyCode};
-use crate::router::{page::Page, Params};
+use crate::router::{
+    page::{MountOperation, MountResult, Page},
+    Params,
+};
 use crate::ui::{misc::logo, Api, Database, Frame, Operation};
 
 const MENU_BUTTON_LEN: u8 = 3;
@@ -17,7 +20,15 @@ pub struct Authenticate {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Authenticate {
-    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, params: Params) {}
+    async fn mount(
+        &mut self,
+        db: Database,
+        api: Api,
+        event_sender: EventSender,
+        params: Params,
+    ) -> MountResult {
+        Ok(MountOperation::None)
+    }
 
     async fn unmount(&mut self, db: Database, api: Api) {}
 

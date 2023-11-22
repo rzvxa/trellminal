@@ -39,7 +39,7 @@ impl RouteWithParamsMap {
             .iter()
             .fold(route.clone(), |acc, p| acc.replace(p, r"\/.+"));
         println!("{:?} and {} and parts {:?}", params, pattern, route_parts);
-        std::thread::sleep(std::time::Duration::from_secs(10));
+        // std::thread::sleep(std::time::Duration::from_secs(10));
         self.routes
             .push(RouteWithParams::new(pattern, params, page));
         self.raw_routes.insert(route);

@@ -14,7 +14,10 @@ use crate::input::{
     http_server::{HttpServer, Request, RespondWithHtml},
     Event, EventSender, KeyCode,
 };
-use crate::router::{page::Page, Params};
+use crate::router::{
+    page::{MountResult, MountOperation, Page},
+    Params,
+};
 use crate::ui::{misc::logo, Api, Database, Frame, Operation};
 
 pub struct BrowserAuthenticate {
@@ -44,8 +47,15 @@ fn request_validator(req: &Request) -> bool {
 
 #[async_trait]
 impl Page for BrowserAuthenticate {
-    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, params: Params) {
+    async fn mount(
+        &mut self,
+        db: Database,
+        api: Api,
+        event_sender: EventSender,
+        params: Params,
+    ) -> MountResult {
         self.web_server = Some(HttpServer::new(event_sender, "9999", request_validator));
+        Ok(MountOperation::None)
     }
 
     async fn unmount(&mut self, db: Database, api: Api) {

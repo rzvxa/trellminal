@@ -7,7 +7,10 @@ use tui::{
 use crate::api::{members::Members, organizations::Organizations};
 use crate::input::{Event, EventSender, KeyCode};
 use crate::models::Organization;
-use crate::router::{page::Page, Params};
+use crate::router::{
+    page::{MountOperation, MountResult, Page},
+    Params,
+};
 use crate::ui::{
     misc::layout::{center_rect_with_margin, rect_with_margin_top},
     Api, Database, Frame, Operation,
@@ -23,29 +26,39 @@ pub struct Workspaces {
 use async_trait::async_trait;
 #[async_trait]
 impl Page for Workspaces {
-    async fn mount(&mut self, db: Database, api: Api, event_sender: EventSender, params: Params) {
+    async fn mount(
+        &mut self,
+        db: Database,
+        api: Api,
+        event_sender: EventSender,
+        params: Params,
+    ) -> MountResult {
         self.workspaces.clear();
         self.state.select(Some(0));
 
         let members_req = {
+            // lock api
             let api = api.lock().unwrap();
             api.members_me()
-        };
-        if let Ok(me) = members_req.send().await {
-            let mut futures = JoinSet::new();
-            {
-                let api = api.lock().unwrap();
-                me.id_organizations
-                    .into_iter()
-                    .map(|id| api.organizations_get(id).send())
-                    .for_each(|f| {
-                        futures.spawn(f);
-                    });
-            }
-            while let Some(result) = futures.join_next().await {
-                self.workspaces.push(result.unwrap().unwrap());
-            }
+        }; // release api
+        let me = members_req.send().await?;
+        let mut futures = JoinSet::new();
+        {
+            // lock api
+            let api = api.lock().unwrap();
+            me.id_organizations
+                .into_iter()
+                .map(|id| api.organizations_get(id).send())
+                .for_each(|f| {
+                    futures.spawn(f);
+                });
+        } // release api
+
+        while let Some(result) = futures.join_next().await {
+            self.workspaces.push(result??);
         }
+
+        Ok(MountOperation::None)
     }
 
     async fn unmount(&mut self, db: Database, api: Api) {}
