@@ -93,6 +93,10 @@ impl Router {
         api: &Api,
         event_sender: &EventSender,
     ) {
+        let mut params = Params::new();
+        params.insert("location".to_string(), location.clone());
+        params.insert("origin".to_string(), self.peek().clone());
+
         let location = if self.routes.contains_location(&location) {
             location
         } else {
@@ -101,7 +105,7 @@ impl Router {
         self.unmount_current(db, api).await;
 
         match self
-            .mount_page(location.clone(), db, api, event_sender)
+            .mount_page(location.clone(), db, api, event_sender, params)
             .await
         {
             Ok(op) => {
@@ -149,11 +153,8 @@ impl Router {
         db: &Database,
         api: &Api,
         event_sender: &EventSender,
+        params: Params,
     ) -> MountResult {
-        let mut params = Params::new();
-        params.insert("location".to_string(), location.clone());
-        params.insert("origin".to_string(), self.peek().clone());
-
         if let Some((cur, params)) = self.routes.get_mut_with_params(&location, params) {
             let result = cur
                 .mount(db.clone(), api.clone(), event_sender.clone(), params)
