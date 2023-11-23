@@ -67,7 +67,7 @@ impl Page for TokenExpired {
             ])
             .split(center_layout[3]);
 
-        let title = Paragraph::new("Your session has for {} has expired!")
+        let title = Paragraph::new("Your session for {} has expired!")
             .block(Block::default())
             .wrap(Wrap { trim: true })
             .alignment(Alignment::Center);
