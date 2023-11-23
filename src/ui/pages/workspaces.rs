@@ -64,7 +64,7 @@ impl Page for Workspaces {
     async fn unmount(&mut self, db: Database, api: Api) {}
 
     fn draw(&mut self, frame: &mut Frame, rect: Rect) {
-        let block = Block::default().title("Welcome").borders(Borders::ALL);
+        let block = Block::default().title("Workspaces").borders(Borders::ALL);
 
         let list_block_rect = center_rect_with_margin(rect, 30, 1);
         let list_rect = rect_with_margin_top(list_block_rect, 2);
