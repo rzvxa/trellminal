@@ -21,9 +21,9 @@ use tui::{backend::CrosstermBackend, layout, widgets, Frame as TFrame, Terminal}
 
 use misc::{loading::Loading, status_bar::StatusBar};
 use pages::{
-    authenticate::Authenticate, browser_authenticate::BrowserAuthenticate, first_load::FirstLoad,
-    home::Home, manual_authenticate::ManualAuthenticate, not_found::NotFound,
-    token_expired::TokenExpired, workspaces::Workspaces,
+    authenticate::Authenticate, boards::Boards, browser_authenticate::BrowserAuthenticate,
+    first_load::FirstLoad, home::Home, manual_authenticate::ManualAuthenticate,
+    not_found::NotFound, token_expired::TokenExpired, workspaces::Workspaces,
 };
 
 type Frame<'a> = TFrame<'a, CrosstermBackend<Stdout>>;
@@ -57,7 +57,7 @@ pub async fn init<'a>(
             ManualAuthenticate::new(),
         )
         .route("/w".to_string(), Workspaces::new())
-        .route("/w/:w/boards".to_string(), Workspaces::new());
+        .route("/w/:w/boards".to_string(), Boards::new());
     let context = Context::new(
         terminal,
         db,

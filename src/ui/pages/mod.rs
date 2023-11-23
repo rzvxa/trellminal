@@ -1,4 +1,5 @@
 pub mod authenticate;
+pub mod boards;
 pub mod browser_authenticate;
 pub mod first_load;
 pub mod home;
