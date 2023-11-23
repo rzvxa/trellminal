@@ -27,7 +27,7 @@ impl<Page> Route<Page> {
         Self::new(page, params)
     }
 
-    pub fn set_initial_params(mut self, params: Params) -> Self {
+    pub fn initial_params(mut self, params: Params) -> Self {
         params.into_iter().for_each(|(k, v)| {
             if !self.params.contains_key(&k) {
                 self.params.insert(k, v);
@@ -92,38 +92,41 @@ impl Routes {
         }
     }
 
-    pub fn get(&self, location: &String) -> Option<Route<&dyn Page>> {
+    pub fn get(&self, location: &String) -> Option<&dyn Page> {
         if let Some(p) = self.no_params.get(location) {
-            Some(Route::no_params(p.as_ref()))
+            Some(p.as_ref())
         } else if let Some(p) = self.with_params.find(location.clone()) {
-            Some(Route::with_params(p.page(), Params::new()))
+            Some(p.page())
         } else {
             None
         }
     }
 
-    pub fn get_mut(&mut self, location: &String) -> Option<Route<&mut dyn Page>> {
+    pub fn get_mut(&mut self, location: &String) -> Option<&mut dyn Page> {
+        if let Some(p) = self.no_params.get_mut(location) {
+            Some(p.as_mut())
+        } else if let Some(p) = self.with_params.find_mut(location.clone()) {
+            Some(p.page_mut())
+        } else {
+            None
+        }
+    }
+
+    pub fn get_mut_with_params(&mut self, location: &String) -> Option<Route<&mut dyn Page>> {
         if let Some(p) = self.no_params.get_mut(location) {
             Some(Route::no_params(p.as_mut()))
-        } else if let Some(p) = self.with_params.find_mut(location.clone()) {
-            Some(Route::with_params(p.page_mut(), Params::new()))
+        } else if let Some((p, params)) = self.with_params.find_with_params(location.clone()) {
+            Some(Route::with_params(p.page_mut(), params))
         } else {
             None
-        }
-    }
-
-    pub fn get_mut_with_params(
-        &mut self,
-        location: &String,
-        initial_params: Params,
-    ) -> Option<Route<&mut dyn Page>> {
-        match self.get_mut(location) {
-            Some(r) => Some(r.set_initial_params(initial_params)),
-            None => None,
         }
     }
 
     pub fn contains_location(&self, location: &String) -> bool {
-        self.no_params.contains_key(location)
+        if self.no_params.contains_key(location) {
+            true
+        } else {
+            self.with_params.contains_location(location)
+        }
     }
 }

@@ -16,6 +16,7 @@ const MENU_BUTTON_LEN: u8 = 3;
 pub struct TokenExpired {
     selected_button: u8,
     location: String,
+    username: String,
 }
 
 use async_trait::async_trait;
@@ -29,6 +30,13 @@ impl Page for TokenExpired {
         mut params: Params,
     ) -> MountResult {
         self.location = params.remove("location").unwrap();
+        self.username = {
+            // lock db
+            let mut db = db.lock().unwrap();
+            let id = db.active_account.to_owned().unwrap();
+            let user = db.remove_account(&id).unwrap();
+            user.username
+        }; // release db
         Ok(MountOperation::None)
     }
 
@@ -67,10 +75,13 @@ impl Page for TokenExpired {
             ])
             .split(center_layout[3]);
 
-        let title = Paragraph::new("Your session for {} has expired!")
-            .block(Block::default())
-            .wrap(Wrap { trim: true })
-            .alignment(Alignment::Center);
+        let title = Paragraph::new(format!(
+            "Your session for \"{}\" has expired!",
+            self.username
+        ))
+        .block(Block::default())
+        .wrap(Wrap { trim: true })
+        .alignment(Alignment::Center);
 
         let btns = [
             (
@@ -143,6 +154,7 @@ impl TokenExpired {
         Self {
             selected_button: 0,
             location: String::new(),
+            username: String::new(),
         }
     }
 

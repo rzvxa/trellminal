@@ -1,8 +1,10 @@
 use super::{Page, Params};
+use regex::Regex;
 use std::collections::HashSet;
 
 pub struct RouteWithParams {
-    pattern: String,
+    route: String,
+    regex: Regex,
     parts: Vec<String>,
     page: Box<dyn Page>,
 }
@@ -16,16 +18,24 @@ fn split_route(route: &str) -> Vec<String> {
 }
 
 impl RouteWithParams {
-    pub fn new(pattern: String, params: Vec<&str>, page: Box<dyn Page>) -> Self {
-        let parts = split_route(&pattern);
+    pub fn new(route: String, params: Vec<&str>, page: Box<dyn Page>) -> Self {
+        let pattern = params
+            .iter()
+            .fold(route.clone(), |acc, p| acc.replace(p, r"\/.+"));
+        let parts = split_route(&route);
         Self {
-            pattern,
+            route,
+            regex: Regex::new(&pattern).unwrap(),
             page,
             parts,
         }
     }
 
-    pub fn is_match(&self, route: &str) -> Option<Params> {
+    pub fn is_match(&self, route: &str) -> bool {
+        self.regex.is_match(route)
+    }
+
+    pub fn match_params(&self, route: &str) -> Option<Params> {
         let parts = split_route(route);
         if self.parts.len() != parts.len() {
             return None;
@@ -73,30 +83,29 @@ impl RouteWithParamsMap {
     }
 
     pub fn insert(&mut self, route: String, params: Vec<&str>, page: Box<dyn Page>) {
-        let pattern = params
-            .iter()
-            .fold(route.clone(), |acc, p| acc.replace(p, r"\/.+"));
         self.routes
-            .push(RouteWithParams::new(pattern, params, page));
+            .push(RouteWithParams::new(route.clone(), params, page));
         self.raw_routes.insert(route);
     }
 
     pub fn find(&self, location: String) -> Option<&RouteWithParams> {
-        self.routes.iter().find(|r| r.is_match(&location).is_some())
+        self.routes.iter().find(|r| r.is_match(&location))
     }
 
     pub fn find_mut(&mut self, location: String) -> Option<&mut RouteWithParams> {
-        self.routes
-            .iter_mut()
-            .find(|r| r.is_match(&location).is_some())
+        self.routes.iter_mut().find(|r| r.is_match(&location))
     }
 
     pub fn find_with_params(&mut self, location: String) -> Option<(&mut RouteWithParams, Params)> {
         self.routes
             .iter_mut()
-            .find_map(|r| match r.is_match(&location) {
+            .find_map(|r| match r.match_params(&location) {
                 Some(params) => Some((r, params)),
                 None => None,
             })
+    }
+
+    pub fn contains_location(&self, location: &String) -> bool {
+        self.routes.iter().find(|x| x.is_match(&location)).is_some()
     }
 }

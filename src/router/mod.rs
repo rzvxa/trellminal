@@ -153,10 +153,10 @@ impl Router {
         db: &Database,
         api: &Api,
         event_sender: &EventSender,
-        params: Params,
+        initial_params: Params,
     ) -> MountResult {
-        if let Some(route) = self.routes.get_mut_with_params(&location, params) {
-            let (page, params) = route.unpack();
+        if let Some(route) = self.routes.get_mut_with_params(&location) {
+            let (page, params) = route.initial_params(initial_params).unpack();
             let result = page
                 .mount(db.clone(), api.clone(), event_sender.clone(), params)
                 .await;
@@ -164,7 +164,7 @@ impl Router {
                 if let Some(req_err) = err.downcast_ref::<SendRequestError>() {
                     match req_err {
                         SendRequestError::ExpiredToken => {
-                            Ok(MountOperation::Redirect(TOKEN_EXPIRED_ROUTE.to_string()))
+                            Ok(MountOperation::Redirect(TOKEN_EXPIRED_ROUTE.to_owned()))
                         }
 
                         _ => Err(err),
@@ -181,11 +181,10 @@ impl Router {
     }
 
     pub fn current(&self) -> Option<&dyn Page> {
-        Some(self.routes.get(self.peek())?.page())
+        self.routes.get(self.peek())
     }
 
     pub fn current_mut(&mut self) -> Option<&mut dyn Page> {
-        let location = self.peek().clone();
-        Some(self.routes.get_mut(&location)?.page())
+        self.routes.get_mut(&self.peek().clone())
     }
 }

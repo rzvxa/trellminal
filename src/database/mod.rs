@@ -78,8 +78,8 @@ impl Database {
 
     pub fn active_account(&self) -> Option<&Account> {
         match &self.active_account {
-            Some(active_account) => self.accounts.get(active_account),
-            None => None
+            Some(active_account) => self.find_account(active_account),
+            None => None,
         }
     }
 
@@ -90,5 +90,17 @@ impl Database {
         } else {
             Err(DatabaseError::KeyNotFound)
         }
+    }
+
+    pub fn find_account(&self, id: &UserId) -> Option<&Account> {
+        self.accounts.get(id)
+    }
+
+    pub fn remove_account(&mut self, id: &UserId) -> Option<Account> {
+        match &self.active_account {
+            Some(_id) if _id == id => self.active_account = None,
+            _ => {}
+        }
+        self.accounts.remove(id)
     }
 }
