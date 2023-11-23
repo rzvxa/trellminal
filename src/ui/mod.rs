@@ -115,21 +115,35 @@ async fn handle_status_bar_update<'a>(
 ) -> StatusBarUpdateResult {
     match operation {
         Operation::Navigate(loc) => {
-            context
-                .router
-                .lock()
-                .await
-                .navigate(loc, &context.db, &context.api, &context.event_sender)
-                .await;
+            tokio::spawn({
+                let db = context.db.clone();
+                let api = context.api.clone();
+                let router = context.router.clone();
+                let event_sender = context.event_sender.clone();
+                async move {
+                    router
+                        .lock()
+                        .await
+                        .navigate(loc, &db, &api, &event_sender)
+                        .await;
+                }
+            });
             StatusBarUpdateResult::consume()
         }
         Operation::NavigateBackward => {
-            context
-                .router
-                .lock()
-                .await
-                .navigate_backward(&context.db, &context.api, &context.event_sender)
-                .await;
+            tokio::spawn({
+                let db = context.db.clone();
+                let api = context.api.clone();
+                let router = context.router.clone();
+                let event_sender = context.event_sender.clone();
+                async move {
+                    router
+                        .lock()
+                        .await
+                        .navigate_backward(&db, &api, &event_sender)
+                        .await;
+                }
+            });
             StatusBarUpdateResult::consume()
         }
         Operation::Consume => StatusBarUpdateResult::consume(),
