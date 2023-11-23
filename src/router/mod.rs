@@ -155,8 +155,9 @@ impl Router {
         event_sender: &EventSender,
         params: Params,
     ) -> MountResult {
-        if let Some((cur, params)) = self.routes.get_mut_with_params(&location, params) {
-            let result = cur
+        if let Some(route) = self.routes.get_mut_with_params(&location, params) {
+            let (page, params) = route.unpack();
+            let result = page
                 .mount(db.clone(), api.clone(), event_sender.clone(), params)
                 .await;
             if let Err(err) = result {
@@ -180,11 +181,11 @@ impl Router {
     }
 
     pub fn current(&self) -> Option<&dyn Page> {
-        self.routes.get(self.peek())
+        Some(self.routes.get(self.peek())?.page())
     }
 
     pub fn current_mut(&mut self) -> Option<&mut dyn Page> {
         let location = self.peek().clone();
-        self.routes.get_mut(&location)
+        Some(self.routes.get_mut(&location)?.page())
     }
 }

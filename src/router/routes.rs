@@ -1,4 +1,4 @@
-use super::with_params::{RouteWithParams, RouteWithParamsMap};
+use super::with_params::RouteWithParamsMap;
 use super::{Page, Params};
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -9,31 +9,59 @@ pub struct Routes {
     with_params: RouteWithParamsMap,
 }
 
-pub enum Route<'a> {
-    NoParams(&'a Box<dyn Page>),
-    WithParams(&'a RouteWithParams),
+pub struct Route<Page> {
+    page: Page,
+    params: Params,
 }
 
-pub enum RouteMut<'a> {
-    NoParams(&'a mut Box<dyn Page>),
-    WithParams(&'a mut RouteWithParams),
-}
-
-impl<'a> Route<'a> {
-    pub fn target(self) -> &'a dyn Page {
-        match self {
-            Route::NoParams(r) => r.as_ref(),
-            Route::WithParams(r) => r.target(),
-        }
+impl<Page> Route<Page> {
+    fn new(page: Page, params: Params) -> Self {
+        Self { page, params }
     }
-}
 
-impl<'a> RouteMut<'a> {
-    pub fn target_mut(self) -> &'a mut dyn Page {
-        match self {
-            RouteMut::NoParams(r) => r.as_mut(),
-            RouteMut::WithParams(r) => r.target_mut(),
-        }
+    pub fn no_params(page: Page) -> Self {
+        Self::new(page, Params::new())
+    }
+
+    pub fn with_params(page: Page, params: Params) -> Self {
+        Self::new(page, params)
+    }
+
+    pub fn set_initial_params(mut self, params: Params) -> Self {
+        params.into_iter().for_each(|(k, v)| {
+            if !self.params.contains_key(&k) {
+                self.params.insert(k, v);
+            }
+        });
+        self
+    }
+
+    pub fn page(self) -> Page {
+        self.page
+    }
+
+    pub fn page_ref(&self) -> &Page {
+        &self.page
+    }
+
+    pub fn page_mut(&mut self) -> &mut Page {
+        &mut self.page
+    }
+
+    pub fn params(self) -> Params {
+        self.params
+    }
+
+    pub fn params_ref(&self) -> &Params {
+        &self.params
+    }
+
+    pub fn params_mut(&mut self) -> &mut Params {
+        &mut self.params
+    }
+
+    pub fn unpack(self) -> (Page, Params) {
+        (self.page, self.params)
     }
 }
 
@@ -64,40 +92,23 @@ impl Routes {
         }
     }
 
-    fn get_route(&self, location: &String) -> Option<Route> {
+    pub fn get(&self, location: &String) -> Option<Route<&dyn Page>> {
         if let Some(p) = self.no_params.get(location) {
-            Some(Route::NoParams(p))
+            Some(Route::no_params(p.as_ref()))
         } else if let Some(p) = self.with_params.find(location.clone()) {
-            Some(Route::WithParams(p))
+            Some(Route::with_params(p.page(), Params::new()))
         } else {
             None
         }
     }
 
-    pub fn get(&self, location: &String) -> Option<&dyn Page> {
-        if let Some(p) = self.no_params.get(location) {
-            Some(p.as_ref())
-        } else if let Some(p) = self.with_params.find(location.clone()) {
-            Some(p.target())
-        } else {
-            None
-        }
-    }
-
-    fn get_route_mut(&mut self, location: &String) -> Option<RouteMut> {
+    pub fn get_mut(&mut self, location: &String) -> Option<Route<&mut dyn Page>> {
         if let Some(p) = self.no_params.get_mut(location) {
-            Some(RouteMut::NoParams(p))
+            Some(Route::no_params(p.as_mut()))
         } else if let Some(p) = self.with_params.find_mut(location.clone()) {
-            Some(RouteMut::WithParams(p))
+            Some(Route::with_params(p.page_mut(), Params::new()))
         } else {
             None
-        }
-    }
-
-    pub fn get_mut(&mut self, location: &String) -> Option<&mut dyn Page> {
-        match self.get_route_mut(location) {
-            Some(r) => Some(r.target_mut()),
-            None => None,
         }
     }
 
@@ -105,15 +116,9 @@ impl Routes {
         &mut self,
         location: &String,
         initial_params: Params,
-    ) -> Option<(&mut dyn Page, Params)> {
-        match self.get_route_mut(location) {
-            Some(r) => {
-                if let RouteMut::WithParams(r) = r {
-                    Some((r.target_mut(), initial_params))
-                } else {
-                    Some((r.target_mut(), initial_params))
-                }
-            }
+    ) -> Option<Route<&mut dyn Page>> {
+        match self.get_mut(location) {
+            Some(r) => Some(r.set_initial_params(initial_params)),
             None => None,
         }
     }
