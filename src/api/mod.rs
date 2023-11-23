@@ -21,6 +21,12 @@ pub enum SendRequestError {
     SerializationError(#[from] serde_json::Error),
 }
 
+pub enum RequestFields<'a> {
+    All,
+    Raw(&'a str),
+    List(Vec<&'a str>),
+}
+
 pub enum RequestProtocol {
     GET,
     POST,
@@ -87,10 +93,19 @@ impl Api {
         self.token = token;
     }
 
-    fn get_req<Response>(&self, url: String) -> Request<Response>
+    fn get_req<Response>(&self, url: String, fields: RequestFields) -> Request<Response>
     where
         Response: serde::de::DeserializeOwned,
     {
+        let fields = match fields {
+            RequestFields::All => "all".to_string(),
+            RequestFields::Raw(fields) => fields.to_string(),
+            RequestFields::List(fields) => fields.join(","),
+        };
+        let url = format!(
+            "{}/?key={}&token={}&fields={}",
+            url, self.key, self.token, fields
+        );
         Request::get(url)
     }
 }

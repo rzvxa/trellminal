@@ -1,4 +1,4 @@
-use super::{Api, Request, ENDPOINT};
+use super::{Api, Request, RequestFields, ENDPOINT};
 use crate::models::User;
 use const_format::formatcp;
 
@@ -11,7 +11,15 @@ pub trait Members {
 
 impl Members for Api {
     fn members_me(&self) -> Request<User> {
-        let fetch_user_url = format!("{}/?key={}&token={}", URL_ME, self.key, self.token);
-        self.get_req(fetch_user_url)
+        self.get_req(
+            URL_ME.to_string(),
+            RequestFields::List(vec![
+                "id",
+                "username",
+                "fullName",
+                "idBoards",
+                "idOrganizations",
+            ]),
+        )
     }
 }
