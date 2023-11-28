@@ -48,7 +48,7 @@ impl Page for Workspaces {
             let api = api.lock().unwrap();
             me.id_organizations
                 .into_iter()
-                .map(|id| api.organizations_get(id).send())
+                .map(|id| api.organizations_get(&id).send())
                 .for_each(|f| {
                     futures.spawn(f);
                 });

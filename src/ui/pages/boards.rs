@@ -40,7 +40,7 @@ impl Page for Boards {
         let boards_req = {
             // lock api
             let api = api.lock().unwrap();
-            api.organizations_boards(workspace_id)
+            api.organizations_boards(&workspace_id)
         }; // release api
         self.boards = boards_req.send().await?;
 
@@ -87,8 +87,8 @@ impl Page for Boards {
                     Operation::None
                 }
                 KeyCode::Enter => {
-                    let org_id = self.boards[self.state.selected().unwrap()].id.clone();
-                    Operation::Navigate(format!("/w/{}/boards", org_id))
+                    let selected = &self.boards[self.state.selected().unwrap()];
+                    Operation::Navigate(format!("/b/{}/{}", selected.id, selected.name))
                 }
                 _ => Operation::None,
             },

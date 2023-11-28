@@ -1,3 +1,4 @@
+pub mod boards;
 pub mod members;
 pub mod organizations;
 
