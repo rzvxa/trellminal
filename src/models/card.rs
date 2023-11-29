@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub type CardId = String;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Card {
     pub id: CardId,
     #[serde(rename = "idBoard")]

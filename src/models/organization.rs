@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub type OrganizationId = String;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Organization {
     pub id: OrganizationId,
     pub name: String,

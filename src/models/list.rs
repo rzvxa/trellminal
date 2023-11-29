@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub type ListId = String;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct List {
     pub id: ListId,
     #[serde(rename = "idBoard")]
