@@ -1,26 +1,26 @@
+use std::collections::HashMap;
 use tui::{
-    layout::{Alignment, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, List, ListItem, ListState},
 };
 
 use crate::api::boards::Boards;
 use crate::input::{Event, EventSender, KeyCode};
-use crate::models::{BoardId, Card as CardModel, List as ListModel};
+use crate::models::{BoardId, Card as CardModel, List as ListModel, ListId};
 use crate::router::{
     page::{MountOperation, MountResult, Page},
     Params,
 };
-use crate::ui::{
-    misc::layout::{center_rect_with_margin, rect_with_margin_top},
-    Api, Database, Frame, Operation,
-};
+use crate::ui::{Api, Database, Frame, Operation};
 
 pub struct Board {
     id: BoardId,
     name: String,
     lists: Vec<ListModel>,
-    cards: Vec<CardModel>,
+    cards: HashMap<ListId, Vec<CardModel>>,
+    selected_list: usize,
+    states: Vec<ListState>,
     state: ListState,
 }
 
@@ -48,8 +48,27 @@ impl Page for Board {
             (lists, cards)
         }; // release api
         let (lists, cards) = tokio::join!(lists_req.send(), cards_req.send());
-        self.lists = lists.unwrap_or_default();
-        self.cards = cards.unwrap_or_default();
+        self.lists = lists.unwrap();
+        self.cards = cards
+            .unwrap()
+            .into_iter()
+            .fold(HashMap::new(), |mut cards, card| {
+                if !cards.contains_key(&card.id_list) {
+                    cards.insert(card.id_list.clone(), Vec::new());
+                }
+                cards.get_mut(&card.id_list).unwrap().push(card);
+                cards
+            });
+        self.states = self
+            .lists
+            .iter()
+            .map(|_| {
+                let mut state = ListState::default();
+                state.select(Some(0));
+                state
+            })
+            .collect();
+        self.selected_list = 0;
 
         Ok(MountOperation::None)
     }
@@ -58,28 +77,37 @@ impl Page for Board {
 
     fn draw(&mut self, frame: &mut Frame, rect: Rect) {
         let block = Block::default().title("Board").borders(Borders::ALL);
+        let coulmn_percent = 100 / self.lists.len() as u16;
 
-        let list_block_rect = center_rect_with_margin(rect, 30, 1);
-        let list_rect = rect_with_margin_top(list_block_rect, 2);
-
-        let recent_boards: Vec<ListItem> = self
-            .lists
-            .iter()
-            .map(|b| ListItem::new(b.name.clone()))
-            .collect();
-
-        let boards_block = Block::default()
-            .title("Select a board")
-            .title_alignment(Alignment::Center)
-            .borders(Borders::TOP);
-
-        let boards_list = List::new(recent_boards)
-            .highlight_style(Style::default().fg(Color::Yellow))
-            .highlight_symbol("> ");
+        let lists_layout = Layout::default()
+            .margin(1)
+            .direction(Direction::Horizontal)
+            .constraints(
+                self.lists
+                    .iter()
+                    .map(|_| Constraint::Percentage(coulmn_percent))
+                    .collect::<Vec<_>>(),
+            )
+            .split(rect);
 
         frame.render_widget(block, rect);
-        frame.render_widget(boards_block, list_block_rect);
-        frame.render_stateful_widget(boards_list, list_rect, &mut self.state);
+
+        self.lists
+            .iter()
+            .zip(self.lists.iter())
+            .map(|(data, list)| (data, Board::make_list(list, self.cards.get(&list.id))))
+            .map(|(data, list)| {
+                (
+                    data,
+                    list.highlight_style(Style::default().fg(Color::Yellow))
+                        .highlight_symbol("> "),
+                )
+            })
+            .zip(lists_layout.into_iter())
+            .enumerate()
+            .for_each(|(index, ((data, list), rect))| {
+                frame.render_stateful_widget(list, rect, &mut self.states[index])
+            });
     }
 
     async fn update(&mut self, event: Event, db: Database, api: Api) -> Operation {
@@ -91,6 +119,14 @@ impl Page for Board {
                 }
                 KeyCode::Down | KeyCode::Char('j') => {
                     self.down();
+                    Operation::None
+                }
+                KeyCode::Left | KeyCode::Char('h') => {
+                    self.left();
+                    Operation::None
+                }
+                KeyCode::Right | KeyCode::Char('l') => {
+                    self.right();
                     Operation::None
                 }
                 KeyCode::Enter => {
@@ -110,22 +146,56 @@ impl Board {
             id: String::default(),
             name: String::default(),
             lists: Vec::new(),
-            cards: Vec::new(),
+            cards: HashMap::new(),
+            states: Vec::new(),
             state: ListState::default(),
+            selected_list: 0,
         }
     }
 
-    pub fn up(&mut self) {
-        let current_index = self.state.selected().unwrap_or(0);
+    fn up(&mut self) {
+        let state = &mut self.states[self.selected_list];
+        let current_index = state.selected().unwrap_or(0);
         if current_index > 0 {
-            self.state.select(Some(current_index - 1))
+            state.select(Some(current_index - 1))
         }
     }
 
-    pub fn down(&mut self) {
-        let new_index = self.state.selected().unwrap_or(0) + 1;
-        if new_index < self.lists.len() {
-            self.state.select(Some(new_index))
+    fn down(&mut self) {
+        let state = &mut self.states[self.selected_list];
+        let id_list = &self.lists[self.selected_list].id;
+        let cards = self.cards.get(id_list).unwrap();
+        let new_index = state.selected().unwrap_or(0) + 1;
+        if new_index < cards.len() {
+            state.select(Some(new_index))
         }
+    }
+
+    fn left(&mut self) {
+        if self.selected_list > 0 {
+            self.selected_list -= 1;
+        }
+    }
+
+    fn right(&mut self) {
+        if self.selected_list < self.lists.len() {
+            self.selected_list += 1;
+        }
+    }
+
+    fn make_list<'a>(list: &ListModel, cards: Option<&Vec<CardModel>>) -> List<'a> {
+        let items: Vec<ListItem> = if let Some(cards) = cards {
+            cards
+                .iter()
+                .map(|card| ListItem::new(card.name.clone()))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        List::new(items).block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title(list.name.clone()),
+        )
     }
 }
