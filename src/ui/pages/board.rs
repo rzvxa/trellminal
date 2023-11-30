@@ -1,9 +1,13 @@
+use itertools::izip;
 use std::collections::HashMap;
+use substring::Substring;
 use tui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
+    text::Text,
     widgets::{Block, Borders, List, ListItem, ListState},
 };
+use unicode_width::UnicodeWidthStr;
 
 use crate::api::boards::Boards;
 use crate::input::{Event, EventSender, KeyCode};
@@ -92,22 +96,35 @@ impl Page for Board {
 
         frame.render_widget(block, rect);
 
-        self.lists
-            .iter()
-            .zip(self.lists.iter())
-            .map(|(data, list)| (data, Board::make_list(list, self.cards.get(&list.id))))
-            .map(|(data, list)| {
-                (
-                    data,
-                    list.highlight_style(Style::default().fg(Color::Yellow))
-                        .highlight_symbol("> "),
-                )
-            })
-            .zip(lists_layout.into_iter())
-            .enumerate()
-            .for_each(|(index, ((data, list), rect))| {
-                frame.render_stateful_widget(list, rect, &mut self.states[index])
-            });
+        izip!(
+            self.lists.iter(),
+            self.lists.iter(),
+            lists_layout.into_iter()
+        )
+        .map(|(data, list, rect)| {
+            (
+                data,
+                Board::make_list(list, self.cards.get(&list.id), rect),
+                rect,
+            )
+        })
+        .enumerate()
+        .map(|(index, (data, list, rect))| {
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .title(data.name.clone());
+            let list = if self.selected_list == index {
+                list.highlight_style(Style::default().fg(Color::Yellow))
+                    // .highlight_symbol("> ")
+                    .block(block.border_style(Style::default().fg(Color::Yellow)))
+            } else {
+                list.block(block)
+            };
+            (index, list, rect)
+        })
+        .for_each(|(index, list, rect)| {
+            frame.render_stateful_widget(list, rect, &mut self.states[index])
+        });
     }
 
     async fn update(&mut self, event: Event, db: Database, api: Api) -> Operation {
@@ -183,19 +200,26 @@ impl Board {
         }
     }
 
-    fn make_list<'a>(list: &ListModel, cards: Option<&Vec<CardModel>>) -> List<'a> {
+    fn make_list<'a>(list: &ListModel, cards: Option<&Vec<CardModel>>, rect: Rect) -> List<'a> {
         let items: Vec<ListItem> = if let Some(cards) = cards {
             cards
                 .iter()
-                .map(|card| ListItem::new(card.name.clone()))
+                .map(|card| {
+                    let text = if card.name.width() as u16 > rect.width {
+                        format!(
+                            "{}...",
+                            card.name.as_str().substring(0, rect.width as usize - 5)
+                        )
+                    } else {
+                        card.name.clone()
+                    };
+
+                    ListItem::new(text)
+                })
                 .collect()
         } else {
             Vec::new()
         };
-        List::new(items).block(
-            Block::default()
-                .borders(Borders::ALL)
-                .title(list.name.clone()),
-        )
+        List::new(items)
     }
 }
