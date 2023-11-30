@@ -18,6 +18,13 @@ use crate::router::{
 };
 use crate::ui::{Api, Database, Frame, Operation};
 
+enum WrapMode {
+    TRUNCATE,
+    WRAP,
+}
+
+const WRAP_MODE: WrapMode = WrapMode::WRAP;
+
 pub struct Board {
     id: BoardId,
     name: String,
@@ -208,8 +215,12 @@ impl Board {
                 .iter()
                 .map(|card| {
                     let text = if card.name.width() as u16 > rect.width {
-                        // text_truncate(card.name.clone(), rect.width as usize - 5)
-                        text_wrap(card.name.clone(), rect.width as usize - 2)
+                        match WRAP_MODE {
+                            WrapMode::TRUNCATE => {
+                                text_truncate(card.name.clone(), rect.width as usize - 5)
+                            }
+                            WrapMode::WRAP => text_wrap(card.name.clone(), rect.width as usize - 2),
+                        }
                     } else {
                         card.name.clone()
                     };
