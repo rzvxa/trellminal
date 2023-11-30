@@ -182,6 +182,14 @@ impl Board {
         let current_index = state.selected().unwrap_or(0);
         if current_index > 0 {
             state.select(Some(current_index - 1))
+        } else {
+            let id_list = &self.lists[self.selected_list].id;
+            let last_index = if let Some(cards) = self.cards.get(id_list) {
+                cards.len() - 1
+            } else {
+                0
+            };
+            state.select(Some(last_index))
         }
     }
 
