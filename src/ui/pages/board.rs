@@ -4,8 +4,8 @@ use substring::Substring;
 use tui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::Text,
-    widgets::{Block, Borders, List, ListItem, ListState},
+    text::{Span, Spans, Text},
+    widgets::{Block, Borders, List, ListItem, ListState, Wrap},
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -181,10 +181,12 @@ impl Board {
     fn down(&mut self) {
         let state = &mut self.states[self.selected_list];
         let id_list = &self.lists[self.selected_list].id;
-        let cards = self.cards.get(id_list).unwrap();
+        let cards = self.cards.get(id_list);
         let new_index = state.selected().unwrap_or(0) + 1;
-        if new_index < cards.len() {
+        if cards.is_some_and(|c| new_index < c.len()) {
             state.select(Some(new_index))
+        } else {
+            state.select(Some(0))
         }
     }
 
@@ -206,10 +208,8 @@ impl Board {
                 .iter()
                 .map(|card| {
                     let text = if card.name.width() as u16 > rect.width {
-                        format!(
-                            "{}...",
-                            card.name.as_str().substring(0, rect.width as usize - 5)
-                        )
+                        // text_truncate(card.name.clone(), rect.width as usize - 5)
+                        text_wrap(card.name.clone(), rect.width as usize - 2)
                     } else {
                         card.name.clone()
                     };
@@ -222,4 +222,17 @@ impl Board {
         };
         List::new(items)
     }
+}
+
+fn text_truncate(text: String, size: usize) -> String {
+    format!("{}...", text.as_str().substring(0, size))
+}
+
+fn text_wrap(text: String, size: usize) -> String {
+    let mut chars = text.chars();
+    (0..)
+        .map(|_| chars.by_ref().take(size).collect::<String>())
+        .take_while(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
