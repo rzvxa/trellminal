@@ -57,6 +57,7 @@ impl Page for Workspaces {
         while let Some(result) = futures.join_next().await {
             self.workspaces.push(result??);
         }
+        self.workspaces.sort_by(|lhs, rhs| lhs.name.cmp(&rhs.name));
 
         Ok(MountOperation::None)
     }
